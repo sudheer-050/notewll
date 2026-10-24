@@ -139,6 +139,7 @@ namespace LocalDictation
         readonly Label micStatus = new Label(), sttStatus = new Label(), saved = new Label(), homeLatest = new Label(), homeShortcut = new Label(), homeMicrophone = new Label();
         readonly CheckBox quality = new CheckBox { Text = "Enhanced local notes and meeting voices", AutoSize = true };
         readonly CheckBox accurateMode = new CheckBox { Text = "Accurate local dictation and speech detection", AutoSize = true };
+        readonly CheckBox smartCleanup = new CheckBox { Text = "Smart sentence cleanup with local Ollama", AutoSize = true };
         readonly CheckBox cleanup = new CheckBox { Text = "Clean up filler words and spoken corrections", AutoSize = true };
         readonly CheckBox autoPaste = new CheckBox { Text = "Insert text into the app I was using", AutoSize = true };
         readonly CheckBox liveWriting = new CheckBox { Text = "Write live, then refine when I release the shortcut", AutoSize = true };
@@ -156,7 +157,7 @@ namespace LocalDictation
         public bool CloseToTray;
         public Action<Config> OnSaved;
         public Func<bool> CanTest;
-        public bool IsTesting { get { return VoiceWordDialog.OpenCount > 0 || testRecorder != null || transcribing || (notes != null && notes.Busy); } }
+        public bool IsTesting { get { return VoiceEnrollmentDialog.OpenCount > 0 || VoiceWordDialog.OpenCount > 0 || testRecorder != null || transcribing || (notes != null && notes.Busy); } }
         public Config Result { get; private set; }
         public string CurrentPage { get; private set; }
         public string Summary { get { return "mics=" + String.Join(";", mic.Items.Cast<object>().Select(i => i.ToString())) + "|selected=" + mic.SelectedItem + "|cleanup=" + cleanup.Checked + "|autoPaste=" + autoPaste.Checked + "|startup=" + startup.Checked + "|preview=" + cleaned.Text; } }
@@ -186,7 +187,7 @@ namespace LocalDictation
             Deactivate += (s, e) => { if (IsCapturingShortcut) EndShortcutCapture(); };
             mic.Items.Add("Windows default microphone"); foreach (var name in Mics.List()) mic.Items.Add(name);
             int selected = mic.Items.IndexOf(config.Microphone); mic.SelectedIndex = selected > 0 ? selected : 0;
-            liveWriting.Checked = config.LiveWriting; pasteMethod.Items.AddRange(new object[] { "Automatic (includes terminals)", "Ctrl+V", "Ctrl+Shift+V", "Shift+Insert" }); pasteMethod.SelectedIndex = Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, config.PasteMethod);
+            smartCleanup.Checked = config.SmartCleanupEnabled; liveWriting.Checked = config.LiveWriting; pasteMethod.Items.AddRange(new object[] { "Automatic (includes terminals)", "Ctrl+V", "Ctrl+Shift+V", "Shift+Insert" }); pasteMethod.SelectedIndex = Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, config.PasteMethod);
             quality.Checked = config.QualityEnabled; accurateMode.Checked = config.AccurateDictationEnabled; cleanup.Checked = config.CleanupEnabled; autoPaste.Checked = config.AutoPaste; startup.Checked = config.StartWithWindows;
             noteShortcut.Items.AddRange(new object[] { "Ctrl+Shift+N", "Ctrl+Shift+Space", "Ctrl+Alt+N", "F9", "F10", "F11", "F12" });
             if (!noteShortcut.Items.Contains(config.NotesHotkey)) noteShortcut.Items.Add(config.NotesHotkey); noteShortcut.SelectedItem = config.NotesHotkey;
@@ -194,7 +195,7 @@ namespace LocalDictation
             meetingSource.Items.AddRange(new object[] { "My microphone", "Computer audio", "Microphone + computer" }); meetingSource.SelectedIndex = Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, config.MeetingSource);
             BuildHome(); BuildPlayground(); BuildPreferences(); BuildHelp(); BuildLibraryPage(5, "Word"); BuildLibraryPage(6, "Snippet"); BuildStylePage();
             notes = new NotesPane(config, noteStore) { Left = 40, Top = 18, Width = 760, Height = 700 };
-            notes.CanStart = () => testRecorder == null && !transcribing && !IsCapturingShortcut && (CanTest == null || CanTest()); pages[4].Controls.Add(notes);
+            notes.CanStart = () => VoiceEnrollmentDialog.OpenCount == 0 && testRecorder == null && !transcribing && !IsCapturingShortcut && (CanTest == null || CanTest()); pages[4].Controls.Add(notes);
             notes.ClearHistory = ClearActivity;
             notes.SourceChanged = value => noteSource.SelectedIndex = Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, value);
             var notesHandle = notes.Handle;
@@ -343,7 +344,7 @@ namespace LocalDictation
                 if (IsCapturingShortcut) throw new InvalidOperationException("Release your shortcut keys first.");
                 Result = source.Copy(); Result.Hotkey = selectedShortcut; Result.NotesHotkey = Convert.ToString(noteShortcut.SelectedItem);
                 Result.NotesSource = new[] { "Microphone", "Computer", "Both" }[noteSource.SelectedIndex]; Result.MeetingSource = new[] { "Microphone", "Computer", "Both" }[meetingSource.SelectedIndex];
-                Result.QualityEnabled = quality.Checked; Result.AccurateDictationEnabled = accurateMode.Checked; Result.Microphone = SelectedMic(); Result.CleanupEnabled = cleanup.Checked; Result.AutoPaste = autoPaste.Checked; Result.LiveWriting = liveWriting.Checked;
+                Result.QualityEnabled = quality.Checked; Result.AccurateDictationEnabled = accurateMode.Checked; Result.Microphone = SelectedMic(); Result.SmartCleanupEnabled = smartCleanup.Checked; Result.CleanupEnabled = cleanup.Checked; Result.AutoPaste = autoPaste.Checked; Result.LiveWriting = liveWriting.Checked;
                 Result.PasteMethod = new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }[pasteMethod.SelectedIndex]; Result.StartWithWindows = startup.Checked;
                 Result.UpdateManifestUrl = updateUrl.Text.Trim(); Result.UpdatePublisherThumbprint = updatePublisher.Text.Replace(" ", "").Trim();
                 Result.CheckUpdatesOnStart = updateOnStart.Checked; Result.WritingStyle = writingStyle.Text;

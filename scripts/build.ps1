@@ -1,13 +1,13 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$version = '0.9.0'
+$version = '0.10.0'
 $build = Join-Path $root 'build'
 $dist = Join-Path $root 'dist'
 New-Item -ItemType Directory -Force $build, $dist | Out-Null
 $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if (-not (Test-Path $csc)) { throw '.NET Framework 4.x compiler not found.' }
 $sources = Get-ChildItem "$root\src\*.cs" | ForEach-Object { $_.FullName }
-& $csc /nologo /target:winexe /platform:x64 /optimize+ /win32icon:"$root\assets\local-dictation.ico" /resource:"$root\assets\local-dictation.ico",AppLogo.ico /resource:"$root\assets\local-dictation.png",AppLogo.png /win32manifest:"$root\src\app.manifest" /out:"$build\LocalDictation.exe" /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll $sources
+& $csc /nologo /target:winexe /platform:x64 /optimize+ /win32icon:"$root\assets\local-dictation.ico" /resource:"$root\assets\local-dictation.ico",AppLogo.ico /resource:"$root\assets\local-dictation.png",AppLogo.png /win32manifest:"$root\src\app.manifest" /out:"$build\LocalDictation.exe" /reference:System.Security.dll /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll $sources
 if ($LASTEXITCODE -ne 0) { throw 'Compilation failed.' }
 Copy-Item "$build\LocalDictation.exe" "$dist\LocalDictation-$version.exe" -Force
 Write-Host "Built $dist\LocalDictation-$version.exe"
@@ -16,3 +16,9 @@ New-Item -ItemType Directory -Force "$build\engine" | Out-Null
 Copy-Item "$root\engine\quality_worker.py" "$build\engine\quality_worker.py" -Force
 Copy-Item "$root\engine\accurate_worker.py" "$build\engine\accurate_worker.py" -Force
 Copy-Item "$root\assets\silero_vad.onnx" "$build\engine\silero_vad.onnx" -Force
+
+Copy-Item "$root\engine\voice_match_worker.py" "$build\engine\voice_match_worker.py" -Force
+Copy-Item "$root\scripts\setup_handsfree.ps1" "$build\engine\setup_handsfree.ps1" -Force
+
+Copy-Item "$root\engine\semantic_worker.py" "$build\engine\semantic_worker.py" -Force
+Copy-Item "$root\scripts\setup_semantic.ps1" "$build\engine\setup_semantic.ps1" -Force

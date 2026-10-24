@@ -16,7 +16,7 @@ namespace LocalDictation
             Func<NoteSegment, string> quote = s => Quote(note, s);
             var decisions = speech.Where(s => Regex.IsMatch(s.RawText ?? s.Text, @"(?i)\b(?:agree\w*|decid\w*|decision|approved?|chosen|choose)\b")).Take(8).ToList();
             var actions = speech.Where(s => Regex.IsMatch(s.RawText ?? s.Text, @"(?i)\b(?:will|should|need|tomorrow|deadline|action|next|follow up)\b")).Take(8).ToList();
-            return "Local review - original source excerpts, not an AI summary. Check the recording; categories use keywords.\r\n\r\nOverview\r\n" + String.Join("\r\n\r\n", speech.Take(6).Select(quote)) +
+            return "Local review - original source excerpts, not an AI summary. Check the recording; categories use keywords.\r\n\r\nOverview\r\n" + String.Join("\r\n\r\n", ConversationTools.Highlights(note).Select(hit => quote(note.Segments[hit.Segment]))) +
                 "\r\n\r\nPossible decisions\r\n" + (decisions.Count == 0 ? "No matching statement found." : String.Join("\r\n\r\n", decisions.Select(quote))) +
                 "\r\n\r\nPossible follow-ups\r\n" + (actions.Count == 0 ? "No matching statement found." : String.Join("\r\n\r\n", actions.Select(quote)));
         }
@@ -85,7 +85,7 @@ namespace LocalDictation
                 if (browserKind > 0 && ActivityHistory.Kind(note) != new[] { "", "Dictation", "Note", "Meeting" }[browserKind]) continue;
                 if (filter.SelectedIndex == 1 && note.Kind == "Meeting" || filter.SelectedIndex == 2 && note.Kind != "Meeting") continue;
                 string searchable; lock (note) searchable = note.Title + " " + note.UserName + " " + note.Kind + " " + note.WrittenNotes + " " + note.Tags + " " + String.Join(" ", note.Participants) + " " + NoteStore.Transcript(note);
-                if (searchable.IndexOf(libraryQuery, StringComparison.OrdinalIgnoreCase) >= 0) history.Items.Add(note);
+                if (ConversationTools.Matches(note, libraryQuery, searchable)) history.Items.Add(note);
             }
             history.SelectedItem = selected; populating = false; RenderNotesBrowser();
         }
@@ -172,6 +172,9 @@ namespace LocalDictation
         }
         protected override bool ProcessCmdKey(ref Message message, Keys keys)
         {
+            if (Recording && keys == (Keys.Control | Keys.Alt | Keys.D1)) { AddBookmark("Important"); return true; }
+            if (Recording && keys == (Keys.Control | Keys.Alt | Keys.D2)) { AddBookmark("Question"); return true; }
+            if (Recording && keys == (Keys.Control | Keys.Alt | Keys.D3)) { AddBookmark("Follow up"); return true; }
             if (keys == (Keys.Control | Keys.F)) { tabs.SelectedIndex = 1; findText.Focus(); return true; }
             if (keys == Keys.F3) { FindNext(); return true; }
             if (keys == (Keys.Control | Keys.Shift | Keys.F)) { librarySearch.Focus(); return true; }

@@ -1,11 +1,11 @@
-import hashlib
+﻿import hashlib
 import subprocess
 import zipfile
 from pathlib import Path
 
 from test_app import ROOT
 
-SETUP = ROOT / "dist" / "Notewll-Setup-0.9.0.exe"
+SETUP = ROOT / "dist" / "Notewll-Setup-0.10.0.exe"
 
 
 def test_setup_reports_installed_size_in_rounded_up_kilobytes(tmp_path):
@@ -23,6 +23,14 @@ def test_setup_contains_the_exact_current_application():
     assert result.returncode == 0
     assert "engine=Vosk-small-English|model-download=none|offline-install=true" in result.stdout
     assert result.stdout.endswith(hashlib.sha256((ROOT / "build" / "LocalDictation.exe").read_bytes()).hexdigest())
+
+
+def test_setup_contains_the_current_voice_matcher_and_optional_setup():
+    result = subprocess.run([str(SETUP), '--inspect-handsfree'], capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stderr
+    values = dict(field.split('=', 1) for field in result.stdout.split('|'))
+    assert values['worker-sha256'] == hashlib.sha256((ROOT / 'engine/voice_match_worker.py').read_bytes()).hexdigest()
+    assert values['setup-sha256'] == hashlib.sha256((ROOT / 'scripts/setup_handsfree.ps1').read_bytes()).hexdigest()
 
 
 def test_setup_contains_the_current_accurate_worker_and_verified_detector():

@@ -1,4 +1,4 @@
-# Notewll 0.9.0 user guide
+﻿# Notewll 0.9.0 user guide
 
 ## Install and start
 
@@ -88,3 +88,51 @@ In Preferences > Ball:
 - Apply saves the choices; Reset ball defaults restores the default moon, Earth gravity, default sizes and no custom image.
 
 To verify this feature from a source checkout, run `scripts/build.ps1`, then `build/LocalDictation.exe --ball-preferences-smoke output/ball-preferences`. Additional focused checks are under `verification/verify_ball_physics.ps1` and `verification/verify_tray_*.ps1`.
+
+
+## Optional hands-free, my voice only (0.10.0 preview)
+
+1. Open **Preferences > Hands-free** and choose **Set up local voice matching**. This reuses compatible enhanced-speech dependencies if present, or offers optional package setup (Python 3.10+ is required).
+2. Save your preferred microphone, then choose **Enroll / replace my voice**. Record three six-second samples in a quiet room. No enrollment audio is saved; the local voice profile is encrypted for your Windows account.
+3. Choose **Start hands-free**, click the text field you want to write into, and speak a full phrase. Pause for verification and transcription. Merely hovering does not select a typing destination. Very short phrases and uncertain voices are discarded.
+4. Click the listening ball or press **Escape** to stop the mic immediately. Normal shortcuts and note recording pause this mode. It never enables itself at launch.
+5. **Delete my voice profile** pauses listening and removes the saved profile. Re-enroll when changing microphones if matching becomes unreliable.
+
+Keep control of your destination: physical input or focus/caret changes discard pending phrases. Busy inference drops incoming speech instead of building an ambient recording. There is no automatic clipboard/paste fallback. Voice matching is not perfect, cannot reliably reject overlapping speech or playback of your voice, and does not distinguish dictation from your other conversations. Pause when you do not want your words typed. Native password Edit controls are blocked, but browser password fields cannot reliably be detected. See the verification report for the desktop tests that remain.
+
+### Find conversations and act on them
+
+Open a saved entry and choose **Find & act**. Install semantic search through
+**Preferences > Storage > Storage & recently deleted > Optional features** first.
+Search by meaning returns source passages across saved entries; double-click one
+to open its note and recording timestamp. Highlights select original excerpts.
+Action items stay suggestions until you edit them, tick Confirm and save review.
+
+Use **Edit details** to set a project and tags. History search accepts
+`project:"Apollo release" tag:budget person:Alex` alongside words.
+During recording, Ctrl+Alt+1 marks Important, Ctrl+Alt+2 marks Question and
+Ctrl+Alt+3 marks Follow up, even while another app is focused. Review bookmarks
+after the recording finishes.
+
+Hands-free requires an allowed-app list in Preferences, for example
+`notepad, chrome`. An empty list blocks all apps. Locking Windows or changing
+microphones pauses listening. Start it again manually when ready.
+
+In PDF export, choose the scope, select sensitive preview text and click
+**Redact selected text**. Only that PDF text is redacted; source audio is unchanged
+and is not included. Changing the scope resets redactions.
+
+Storage > Backups offers encrypted snapshots and an opt-in daily schedule while
+Notewll runs. Encrypted snapshots require this Windows account on this PC. Use ZIP
+for migration. Restore previews titles, sizes and skipped existing notes before
+import. Scheduled snapshots skip active recordings and remain until removed.
+
+### Smart sentence cleanup
+
+Enable **Preferences > Writing > Smart sentence cleanup with local Ollama** for
+broader local sentence correction. It uses the optional installed `llama3.2` model,
+works while you speak, and can wait up to four additional seconds at release.
+Use **Check local sentence cleanup** to check/warm it. If it is unavailable, slow,
+or proposes unsupported word changes, basic cleanup is kept. The original recognized
+text stays available in history/review. Turn cleanup off or use Code mode for literal
+wording. No system can guarantee perfect interpretation of ambiguous speech.

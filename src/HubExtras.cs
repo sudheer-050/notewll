@@ -50,7 +50,7 @@ namespace LocalDictation
         {
             updateUrl.TextChanged += (s, e) => MarkDirty(); updatePublisher.TextChanged += (s, e) => MarkDirty();
             updateOnStart.CheckedChanged += (s, e) => MarkDirty(); writingStyle.SelectedIndexChanged += (s, e) => { MarkDirty(); RefreshCleaned(); };
-            foreach (var box in new[] { quality, accurateMode, cleanup, autoPaste, liveWriting, startup, toolbarChoice, indicatorChoice, motionChoice, noiseChoice }) box.CheckedChanged += (s, e) => MarkDirty();
+            foreach (var box in new[] { quality, accurateMode, cleanup, smartCleanup, autoPaste, liveWriting, startup, toolbarChoice, indicatorChoice, motionChoice, noiseChoice }) box.CheckedChanged += (s, e) => MarkDirty();
             foreach (var box in new[] { mic, noteShortcut, noteSource, meetingSource, pasteMethod }) box.SelectedIndexChanged += (s, e) => MarkDirty();
         }
         bool ConfirmUnsaved()
@@ -60,7 +60,7 @@ namespace LocalDictation
             if (result == DialogResult.Cancel) return false;
             if (result == DialogResult.Yes) { SavePreferences(); return !dirty; }
             selectedShortcut = source.Hotkey; hotkey.Text = selectedShortcut;
-            quality.Checked = source.QualityEnabled; accurateMode.Checked = source.AccurateDictationEnabled; cleanup.Checked = source.CleanupEnabled; autoPaste.Checked = source.AutoPaste; liveWriting.Checked = source.LiveWriting; startup.Checked = source.StartWithWindows;
+            smartCleanup.Checked = source.SmartCleanupEnabled; quality.Checked = source.QualityEnabled; accurateMode.Checked = source.AccurateDictationEnabled; cleanup.Checked = source.CleanupEnabled; autoPaste.Checked = source.AutoPaste; liveWriting.Checked = source.LiveWriting; startup.Checked = source.StartWithWindows;
             toolbarChoice.Checked = source.ShowToolbar; indicatorChoice.Checked = source.ShowVoiceIndicator; motionChoice.Checked = source.ReducedMotion; noiseChoice.Checked = source.ReduceNoise; writingStyle.SelectedItem = source.WritingStyle;
             noteShortcut.SelectedItem = source.NotesHotkey; noteSource.SelectedIndex = Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, source.NotesSource); meetingSource.SelectedIndex = Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, source.MeetingSource);
             mic.SelectedIndex = Math.Max(0, mic.Items.IndexOf(source.Microphone)); pasteMethod.SelectedIndex = Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, source.PasteMethod);
@@ -95,10 +95,12 @@ namespace LocalDictation
             Button(recording, "Repair speech installation", 20, 394, 260, (s, e) => { var setup = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Uninstall.exe"); if (File.Exists(setup)) System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = setup, UseShellExecute = true }); else MessageBox.Show(this, "Run the latest Setup executable to repair the speech files."); });
             pendingRules = source.Copy().Personalization;
             var writing = SettingsTab("Writing");
-            Setting(writing, cleanup, 22); Setting(writing, autoPaste, 66); Setting(writing, liveWriting, 110); Setting(writing, accurateMode, 144); Setting(writing, quality, 182);
-            Label(writing, "Paste method", 20, 224, 600, 26, 11, true, Ink); Setting(writing, pasteMethod, 256);
-            Label(writing, "Writing style", 20, 296, 600, 26, 11, true, Ink); writingStyle.Items.AddRange(new object[] { "Standard", "Chat", "Email", "Code" }); writingStyle.SelectedItem = source.WritingStyle; Setting(writing, writingStyle, 328); Button(writing, "Words & snippets", 20, 374, 248, (s, e) => EditRules());
-            Label(writing, "Accurate mode needs the optional local setup. Wait for Ready before dictating.\nCleanup preserves words and removes fillers; turn it off for verbatim writing.", 20, 422, 620, 70, 10, false, Muted);
+            Setting(writing, cleanup, 22); Setting(writing, autoPaste, 66); Setting(writing, liveWriting, 110); Setting(writing, accurateMode, 144); Setting(writing, quality, 182); Setting(writing, smartCleanup, 216);
+            Label(writing, "Paste method", 20, 260, 600, 26, 11, true, Ink); Setting(writing, pasteMethod, 292);
+            Label(writing, "Writing style", 20, 332, 600, 26, 11, true, Ink); writingStyle.Items.AddRange(new object[] { "Standard", "Chat", "Email", "Code" }); writingStyle.SelectedItem = source.WritingStyle; Setting(writing, writingStyle, 364); Button(writing, "Words & snippets", 20, 410, 248, (s, e) => EditRules());
+            Label(writing, "Accurate mode needs the optional local setup. Wait for Ready before dictating.\nBasic cleanup removes fillers and repeated starts. Smart cleanup uses local llama3.2.\nThe original text is kept if the model is unavailable, slow or changes protected words.", 20, 458, 620, 90, 10, false, Muted);
+            var cleanupStatus = Label(writing, SmartCleanup.Status, 20, 598, 620, 80, 9, false, Muted);
+            Button(writing, "Check local sentence cleanup", 20, 554, 300, async (s, e) => { var button = (Control)s; button.Enabled = false; cleanupStatus.Text = "Checking the local grammar service..."; try { await System.Threading.Tasks.Task.Run(() => SmartCleanup.Warm()); if (!IsDisposed) cleanupStatus.Text = SmartCleanup.Status; } finally { if (!button.IsDisposed) button.Enabled = true; } });
             var noteSettings = SettingsTab("Notes");
             Label(noteSettings, "Recording shortcut - select one", 20, 20, 620, 28, 11, true, Ink); Setting(noteSettings, noteShortcut, 58);
             Label(noteSettings, "Personal-note audio", 20, 120, 620, 28, 11, true, Ink); Setting(noteSettings, noteSource, 158);
@@ -108,13 +110,14 @@ namespace LocalDictation
             toolbarChoice.Checked = source.ShowToolbar; indicatorChoice.Checked = source.ShowVoiceIndicator; motionChoice.Checked = source.ReducedMotion; noiseChoice.Checked = source.ReduceNoise;
             toolbarStatus = Label(appearance, "Toolbar: " + (source.ShowToolbar ? "Ready on the screen edge" : "Hidden in preferences"), 20, 324, 620, 44, 9, false, Muted); Setting(appearance, toolbarChoice, 40); Setting(appearance, indicatorChoice, 86); Setting(appearance, motionChoice, 132); Setting(appearance, startup, 178);
             Label(appearance, "Click the ball to reveal its icons. Drag and release it to drop it to the bottom edge.\nKeyboard users can open the Windows tray action menu without changing the target text field.", 20, 240, 620, 76, 10, false, Muted);
+            BuildHandsFreePreferences();
             BuildBallPreferences();
             var storage = SettingsTab("Storage");
             Label(storage, "Keep control of your local data", 20, 20, 620, 32, 14, true, Ink);
             Label(storage, "Recordings, deleted notes and download cache use disk space.\nBack up notes before moving them. Conversation exports can include private annotations.\nSpeech and notes stay on this PC; no account or cloud subscription is required.", 20, 78, 620, 110, 10, false, Muted);
-            Button(storage, "Storage & recently deleted", 20, 220, 284, (s, e) => { if (notes != null && !notes.Busy) { NotesStorageDialog.Show(this, notes.Store, source); notes.ReloadLibrary(); } else MessageBox.Show(this, "Finish the current recording/transcription before managing storage."); });
+            Button(storage, "Storage & recently deleted", 20, 220, 284, (s, e) => { if (notes != null && !notes.Busy) { if (PauseHandsFree != null) PauseHandsFree(); NotesStorageDialog.Show(this, notes.Store, source); notes.ReloadLibrary(); } else MessageBox.Show(this, "Finish the current recording/transcription before managing storage."); });
             var about = SettingsTab("About");
-            Label(about, "Notewll 0.9.0", 20, 20, 620, 38, 18, true, Ink);
+            Label(about, "Notewll 0.10.0", 20, 20, 620, 38, 18, true, Ink);
             Label(about, "Windows x64 | English | One-file offline setup\nIncludes the app, speech runtime and English model.\n\nVoice typing, personal notes and meeting recordings.\nCustomizable floating ball with gravity, bounce and rolling.\nLive color/gradient previews, separate ball/menu sizes, and rotating local images.\n\nEnhanced recognition models are optional downloads.\nThis Windows preview is unsigned.", 20, 82, 630, 220, 10, false, Muted);
             Button(about, "Open release notes", 20, 336, 220, (s, e) => ShowReleaseNotes());
             Button(about, "Check for updates", 260, 336, 220, async (s, e) => await ReleaseUpdates.Check(this, source));
@@ -153,7 +156,7 @@ namespace LocalDictation
         }
         internal void SelectSettingsCategory(string name) { foreach (TabPage tab in settingsTabs.TabPages) if (tab.Text == name) { settingsTabs.SelectedTab = tab; break; } }
         static void OpenPermissionSettings() { try { System.Diagnostics.Process.Start("ms-settings:privacy-microphone"); } catch (Exception ex) { MessageBox.Show(ex.Message, "Open microphone settings"); } }
-        void ShowReleaseNotes() { MessageBox.Show(this, "0.9.0\n\nOne-file offline installation for Windows x64.\nVoice typing, personal notes and meeting recordings.\nA floating ball you can throw, bounce and customize.\nSports and planet skins, nine gravity environments and live previews.\nIndependent ball/menu sizing, custom colors and rotating local images.\nReadable black icons on translucent round white tiles.\n\nThe installer includes the basic English speech engine and model. Enhanced recognition models are optional downloads. This Windows preview is unsigned; real microphone, call and cross-app typing acceptance still depends on the desktop environment.", "Release notes"); }
+        void ShowReleaseNotes() { MessageBox.Show(this, "0.10.0\n\nOptional hands-free mode with local voice enrollment.\nMatched phrases type after a pause into the text field you click.\nClick the listening ball or press Escape to pause the mic.\n\nOne-file offline installation for Windows x64.\nVoice typing, personal notes and meeting recordings.\nA floating ball you can throw, bounce and customize.\nSports and planet skins, nine gravity environments and live previews.\nIndependent ball/menu sizing, custom colors and rotating local images.\nReadable black icons on translucent round white tiles.\n\nThe installer includes the basic English speech engine and model. Enhanced recognition models are optional downloads. This Windows preview is unsigned; real microphone, call and cross-app typing acceptance still depends on the desktop environment.", "Release notes"); }
 
         public void ShowFirstRunGuide() { FirstRunSetup(); source.SetupGuideSeen = true; source.Save(); }
         void FirstRunSetup()

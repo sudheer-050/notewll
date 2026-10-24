@@ -1,3 +1,51 @@
+# Notewll 0.10.0 — Speak naturally. Keep the words that matter.
+
+Local AI dictation, voice notes and meeting transcripts for Windows.
+
+## The headline: cleaner words from natural speech
+
+Repeated starts such as “what's the what's the” can now become “what's the” without a model. Optional local AI sentence cleanup extends this to supported sentence repairs, with validation to protect content, names, numbers and negation. Long passages retain every sentence; rejected rewrites fall back to the basic result.
+
+## Everything new in this preview
+
+- General repeated-prefix and abandoned-start cleanup, straight/curly apostrophe matching and broader local-model sentence editing.
+- Background grammar warm-up and speculative editing; only the latest complete text can be applied. Final smart cleanup has a four-second additional wait cap.
+- Find & act across conversations, optional local semantic retrieval with source playback, extractive highlights and reviewable action items.
+- Timestamped live bookmarks: Ctrl+Alt+1/2/3 for Important, Question and Follow up.
+- Projects, tags and person filters; clear correction-rule scopes and undo through rule removal.
+- Experimental enrolled-voice hands-free mode with an app allowlist, visible state, lock/device-change pause and Escape to stop.
+- Exact-text PDF preview redaction. Personal notes can be excluded; source audio is not redacted or included.
+- Opt-in encrypted daily snapshots, authentication/tamper checks, restore previews and existing-ID protection.
+- Managed optional-feature storage information and install/remove actions. Unknown download/RAM measurements stay labeled unknown.
+- Current screenshots and an illustrative cleanup animation; the existing customizable physics ball remains.
+
+## Downloads
+
+- **Notewll-Setup-0.10.0.exe**: full Windows x64 installer with standard offline English speech included. Run it to install or update, preserving notes/preferences.
+- **Notewll-Setup.exe**: the same installer under a convenient filename.
+- **Notewll-Small-Update.zip**: compact update files and instructions for an existing installation. Not a full installer.
+- **SHA256SUMS-0.10.0.txt**: checksums for those assets.
+
+AI sentence cleanup uses separately installed local Ollama/llama3.2. Semantic search, accurate speech and voice matching use their separate optional setup paths. No cloud API key is needed for the Windows app.
+
+## Evidence and preview limits
+
+The full regression-suite result for this publication is recorded in verification/PUBLICATION_0.10.0.md. Eight warmed local text-editing requests measured 144–511 ms in a small final diagnostic batch; that excludes microphone capture, ASR and desktop insertion. Physical microphone/keyboard acceptance, human-reference recognition accuracy, and semantic-model inference/resource checks remain separate. This is an unsigned Windows preview, not a promise of perfect correction or universal latency. Encrypted snapshots require the same Windows account/PC; use ZIP for migration.
+
+[Product, demo and screenshots](https://myhai.org/projects/dotflow/) · [User guide](https://github.com/sudheer-050/notewll/blob/main/USER_GUIDE.md) · [Source](https://github.com/sudheer-050/notewll)
+
+
+---
+
+## 0.10.0 - local hands-free preview (not yet published)
+
+- Separate opt-in hands-free mode with local three-sample voice enrollment and conservative matching before transcription or typing.
+- Always-on mic uses bounded phrase/pre-roll buffers; rejected and overflow speech are discarded. No automatic listening at launch.
+- Escape, the listening ball and tray menu pause immediately; normal dictation and note/mic tasks pause this mode.
+- Focus/physical input changes invalidate queued text, and a changed-target utterance is suppressed until silence. Direct append only; no focus stealing, UI Automation or paste fallback.
+- Voice vectors are encrypted with Windows per-user DPAPI; enrollment audio is not saved. Optional local voice-matching setup is included; speech model/runtime remain bundled for standard use.
+- Packaging, regression, encrypted storage, voice worker and limited held-out speaker checks pass. Physical microphone, recognition quality in real rooms and cross-app typing acceptance remain pending; no perfect speaker exclusion claim.
+
 # Notewll 0.9.0 - Speak. Write. Make it yours.
 
 Your next thought should not get stuck behind a keyboard. Notewll brings voice typing, personal notes and meeting recordings into one private Windows workspace - with a floating ball that has a personality of its own.

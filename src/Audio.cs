@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -70,6 +70,7 @@ namespace LocalDictation
         readonly int deviceIndex;
         readonly string deviceName;
         readonly MemoryStream pcm = new MemoryStream();
+        readonly Action<byte[]> chunks;
         readonly ManualResetEvent signal = new ManualResetEvent(false);
         readonly IntPtr[] headers = new IntPtr[BufferCount];
         readonly IntPtr[] buffers = new IntPtr[BufferCount];
@@ -87,8 +88,9 @@ namespace LocalDictation
         public int Peak { get { return peak; } }
         public int Bytes { get { lock (pcm) return (int)pcm.Length; } }
 
-        public MicRecorder(string saved)
+        public MicRecorder(string saved, Action<byte[]> chunks = null)
         {
+            this.chunks = chunks;
             bool fell;
             deviceName = Mics.Describe(saved, out deviceIndex, out fell);
             FellBack = fell;
@@ -139,7 +141,7 @@ namespace LocalDictation
                     double squares = 0;
                     for (int s = 0; s + 1 < n; s += 2) { int v = Math.Abs((int)BitConverter.ToInt16(chunk, s)); if (v > top) top = v; squares += (double)v * v; }
                     soundLevel = (int)Math.Sqrt(squares / Math.Max(1, n / 2));
-                    lock (pcm) pcm.Write(chunk, 0, n);
+                    AppendChunk(chunk);
                     level = top; if (top > peak) peak = top;
                 }
                 if (requeue) { hdr.recorded = 0; Marshal.StructureToPtr(hdr, headers[i], false); WinMM.waveInAddBuffer(handle, headers[i], hdrSize); }
@@ -150,6 +152,8 @@ namespace LocalDictation
         {
             while (running) { signal.WaitOne(100); signal.Reset(); if (running) Drain(true); }
         }
+
+        internal void AppendChunk(byte[] chunk) { if (chunks == null) { lock (pcm) pcm.Write(chunk, 0, chunk.Length); } else chunks(chunk); }
 
         public byte[] Snapshot() { lock (pcm) return pcm.ToArray(); }
 

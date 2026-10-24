@@ -40,13 +40,16 @@ namespace LocalDictation
         public bool EditableTextInitialized { get; set; }
         public string Summary { get; set; }
         public string Tags { get; set; }
+        public string Project { get; set; }
+        public List<NoteBookmark> Bookmarks { get; set; }
+        public List<NoteTask> Tasks { get; set; }
         public string DeletedUtc { get; set; }
         public string Status { get; set; }
         public string CaptureError { get; set; }
         public double DurationSeconds { get; set; }
         public List<string> Participants { get; set; }
         public List<NoteSegment> Segments { get; set; }
-        public NoteDocument() { Participants = new List<string>(); Segments = new List<NoteSegment>(); WrittenNotes = ""; Summary = Tags = ""; UserName = ""; }
+        public NoteDocument() { Bookmarks = new List<NoteBookmark>(); Tasks = new List<NoteTask>(); Project = ""; Participants = new List<string>(); Segments = new List<NoteSegment>(); WrittenNotes = ""; Summary = Tags = ""; UserName = ""; }
     }
     static class Introductions
     {
@@ -120,7 +123,7 @@ namespace LocalDictation
             // File.Replace also copies ACL metadata, which restricted Windows accounts cannot do.
             File.Copy(temporary, path, true);
         }
-        public List<NoteDocument> List()
+        public List<NoteDocument> List(bool recover = true)
         {
             var notes = new List<NoteDocument>(); if (!Directory.Exists(Root)) return notes;
             foreach (string folder in Directory.GetDirectories(Root).Where(f => { Guid id; return Guid.TryParseExact(Path.GetFileName(f), "N", out id); }))
@@ -132,7 +135,7 @@ namespace LocalDictation
                     try { note = new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Deserialize<NoteDocument>(File.ReadAllText(File.Exists(path + ".tmp") ? path + ".tmp" : path)); }
                     catch (ArgumentException) { note = new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Deserialize<NoteDocument>(File.ReadAllText(path)); }
                     Validate(note); Folder(note);
-                    if (note.Status == "Recording" || note.Status == "Paused" || note.Status == "Transcribing") { RecoverAudio(note); note.Status = "Interrupted - audio kept"; Save(note); }
+                    if (recover && (note.Status == "Recording" || note.Status == "Paused" || note.Status == "Transcribing")) { RecoverAudio(note); note.Status = "Interrupted - audio kept"; Save(note); }
                     notes.Add(note);
                 }
                 catch (IOException) { }
@@ -158,6 +161,7 @@ namespace LocalDictation
         {
             Guid id; DateTime created;
             if (note == null || !Guid.TryParseExact(note.Id, "N", out id) || !DateTime.TryParse(note.CreatedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out created) || note.Participants == null || note.Segments == null || note.Segments.Count > 100000 || note.Mode != "Microphone" && note.Mode != "Computer" && note.Mode != "Both" || Double.IsNaN(note.DurationSeconds) || Double.IsInfinity(note.DurationSeconds) || note.DurationSeconds < 0) throw new InvalidDataException("Note metadata is invalid.");
+            ConversationTools.Validate(note);
             if (note.Segments.Any(s => s == null || s.StartFrame < 0 || s.Frames < 0 || s.StartFrame > Int64.MaxValue - s.Frames || s.TranscriptStartFrame < 0 || s.Source != "Microphone" && s.Source != "Computer" || s.SpeakerLabel != null && (s.SpeakerLabel.Length > 80 || s.SpeakerLabel.Any(Char.IsControl)))) throw new InvalidDataException("Note audio sections are invalid.");
             if (note.Segments.Any(s => s.VoiceId != null && s.VoiceId.Length > 80 || s.VoiceEmbedding != null && (s.VoiceEmbedding.Length != 256 || s.VoiceEmbedding.Any(v => Double.IsNaN(v) || Double.IsInfinity(v))))) throw new InvalidDataException("Note voice profiles are invalid.");
         }

@@ -1,4 +1,4 @@
-name: Build Windows preview
+﻿name: Build Windows preview
 on:
   workflow_dispatch:
 permissions:
@@ -17,7 +17,7 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install -r requirements-dev.txt
       - name: Check local features
-        run: python -m pytest tests/test_app.py tests/test_setup.py tests/test_note_exports.py tests/test_release.py tests/test_completion.py tests/test_live_grammar.py tests/test_speech_quality.py tests/test_ux_fixes.py tests/test_accurate_speech.py tests/test_accuracy_scoring.py -q -k "not test_live_default_microphone and not test_live_missing_named and not test_live_holly and not test_live_actual_keyboard"
+        run: python -m pytest tests -q -k "not test_live_default_microphone and not test_live_missing_named and not test_live_holly and not test_live_actual_keyboard"
       - name: Prepare update metadata
         shell: powershell
         run: ./scripts/prepare_release.ps1 -Repository '${{ github.repository }}'
@@ -25,6 +25,6 @@ jobs:
         with:
           name: Notewll-Windows-preview
           path: |
-            dist/Notewll-Setup-0.9.0.exe
+            dist/Notewll-Setup-0.10.0.exe
             dist/update.json
-            dist/RELEASE_NOTES-0.9.0.md
+            dist/RELEASE_NOTES-0.10.0.md

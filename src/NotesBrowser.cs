@@ -8,7 +8,7 @@ namespace LocalDictation
     {
         Panel editorHost, notesBrowser, browserHeader, browserContent;
         BufferedScrollPanel browserList;
-        HubButton backToLibrary, browserClear;
+        HubButton backToLibrary, browserClear, browserFind;
         TextBox browserSearch;
         Label browserHeading, browserCaption, browserCount;
         LibraryFilter[] browserFilters;
@@ -31,6 +31,8 @@ namespace LocalDictation
             for (int i = 0; i < browserFilters.Length; i++) { int at = i; browserFilters[i].Click += (s, e) => { browserKind = at; foreach (var button in browserFilters) { button.Selected = button == browserFilters[at]; button.Invalidate(); } Refilter(); }; }
             browserSearch = search; browserSearch.Dock = DockStyle.None; browserSearch.BorderStyle = BorderStyle.None; browserSearchFrame = new Surface(); browserHeader.Controls.Add(browserSearchFrame); browserSearchFrame.Controls.Add(browserSearch); browserSearch.HandleCreated += (s, e) => ActivityHistory.SearchCue(browserSearch); if (browserSearch.IsHandleCreated) ActivityHistory.SearchCue(browserSearch);
             browserClear = new HubButton { Text = "Clear history..." }; browserClear.Click += (s, e) => { if (ClearHistory != null) ClearHistory(); }; browserHeader.Controls.Add(browserClear);
+            browserFind = new HubButton { Text = "Find & act", AccessibleName = "Search all saved conversations by meaning" }; browserHeader.Controls.Add(browserFind);
+            browserFind.Click += (s, e) => { if (Busy) return; if (documents.Count == 0) { MessageBox.Show(FindForm(), "Save a note or conversation first."); return; } SelectNote(documents[0].Id); ShowRoadmapPage(); };
             browserCount = BrowserLabel("", 9); browserHeader.Controls.Add(browserCount);
             browserHeading.BackColor = browserCaption.BackColor = browserCount.BackColor = ThemeColors.Paper;
             notesBrowser.SizeChanged += (s, e) => LayoutNotesBrowser(); browserList.SizeChanged += (s, e) => LayoutNotesBrowser();
@@ -56,7 +58,8 @@ namespace LocalDictation
                 float scale = BrowserScale; int pad = (int)(18 * scale), gap = (int)(10 * scale), width = Math.Max(200, notesBrowser.ClientSize.Width - pad * 2);
                 browserHeader.Height = (int)(204 * scale);
                 int clearWidth = (int)(150 * scale);
-                browserHeading.SetBounds(pad, (int)(8 * scale), width - clearWidth - gap, (int)(38 * scale));
+                browserHeading.SetBounds(pad, (int)(8 * scale), width - clearWidth * 2 - gap * 2, (int)(38 * scale));
+                browserFind.SetBounds(pad + width - clearWidth * 2 - gap, (int)(10 * scale), clearWidth, (int)(34 * scale));
                 browserClear.SetBounds(pad + width - clearWidth, (int)(10 * scale), clearWidth, (int)(34 * scale));
                 browserCaption.SetBounds(pad, (int)(48 * scale), width, (int)(24 * scale));
                 int filterWidth = (width - gap * 3) / 4; for (int i = 0; i < 4; i++) browserFilters[i].SetBounds(pad + i * (filterWidth + gap), (int)(80 * scale), filterWidth, (int)(34 * scale));
@@ -115,6 +118,8 @@ namespace LocalDictation
         {
             var menu = DialogUi.PopupMenu();
             menu.Items.Add("Open", null, (s, e) => SelectNote(note.Id));
+            menu.Items.Add("Find & act", null, (s, e) => { SelectNote(note.Id); ShowRoadmapPage(); });
+            menu.Items.Add("Project and tags...", null, (s, e) => { SelectNote(note.Id); EditDetails(); });
             menu.Items.Add("Info", null, (s, e) => NotesEntryInfo.Show(FindForm(), store, note));
             menu.Items.Add("Copy text", null, (s, e) => { try { Clipboard.SetDataObject(ActivityHistory.Text(note), true, 5, 100); } catch (Exception ex) { MessageBox.Show(FindForm(), ex.Message); } });
             menu.Items.Add(new ToolStripSeparator());

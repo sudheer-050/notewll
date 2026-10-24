@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -31,7 +31,7 @@ namespace LocalDictation
         [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr window, IntPtr dc, uint flags);
         [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hwnd);
-        [DllImport("user32.dll")] static extern short GetAsyncKeyState(int key);
+        [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int key);
         [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hwnd);
         [DllImport("user32.dll")] public static extern uint SendInput(uint count, Input[] inputs, int size);
         [DllImport("kernel32.dll")] public static extern IntPtr GetModuleHandle(string name);
@@ -109,11 +109,12 @@ namespace LocalDictation
         }
     }
 
-    sealed class DictationApp : ApplicationContext
+    sealed partial class DictationApp : ApplicationContext
     {
         readonly Overlay overlay = new Overlay();
         readonly FloatingDock dock = new FloatingDock();
         readonly NotifyIcon tray;
+        readonly HashSet<int> bookmarkKeysDown = new HashSet<int>();
         readonly System.Windows.Forms.Timer noteStatus = new System.Windows.Forms.Timer { Interval = 1000 };
         readonly StateMachine state = new StateMachine();
         readonly DictationRecovery recovery = new DictationRecovery();
@@ -129,6 +130,7 @@ namespace LocalDictation
         readonly ManualResetEvent liveIdle = new ManualResetEvent(true);
         int liveBusy;
         LiveRecognition liveRecognition;
+        LiveGrammar sentenceCleanup;
         string liveInserted = "";
         bool liveInterrupted, noteIndicator, sessionLiveWriting, sessionAccurate;
         volatile bool prewarming;
@@ -151,6 +153,7 @@ namespace LocalDictation
         void ToggleNotes(string mode, string kind = "Note")
         {
             if (state.Current != AppState.Idle) return;
+            StopHandsFree();
             EnsureHub(); hub.ToggleNote(mode, kind); UpdateDock();
         }
         void UpdateDock()
@@ -161,8 +164,9 @@ namespace LocalDictation
             if (recording && hub.Notes.Document != null) label += " " + TimeSpan.FromSeconds(hub.Notes.RecordingSeconds).ToString(@"mm\:ss") + " - click Stop to save";
             if (!recording && !busy && hub != null && !String.IsNullOrWhiteSpace(hub.Notes.Feedback)) label = hub.Notes.Feedback;
             if (!recording && !busy && state.Current == AppState.Idle && config.AccurateDictationEnabled && !AccurateSpeech.Ready) label = engineReadiness;
-            dock.ShowVoiceIndicator = config.ShowVoiceIndicator;
-            dock.UpdateState(state.Current == AppState.Recording, state.Current == AppState.Processing, recording, busy, recording && hub.Notes.Document != null && hub.Notes.Document.Kind == "Meeting", label);
+            if (handsFree != null || handsFreeStarting) label = handsFreeMessage;
+            dock.ShowVoiceIndicator = handsFree != null || config.ShowVoiceIndicator;
+            dock.UpdateState(handsFree != null || state.Current == AppState.Recording, state.Current == AppState.Processing, recording, busy, recording && hub.Notes.Document != null && hub.Notes.Document.Kind == "Meeting", label);
             if (dock.HasVoiceIndicator) overlay.Hide();
         }
         void DisplayVoiceIndicator(string text, Color color)
@@ -182,7 +186,7 @@ namespace LocalDictation
 
         public DictationApp(bool showHub = true)
         {
-            overlay.InputLevel = () => recorder != null ? recorder.SoundLevel : hub != null ? hub.NoteSoundLevel : 0;
+            overlay.InputLevel = () => handsFree != null ? handsFree.Level : recorder != null ? recorder.SoundLevel : hub != null ? hub.NoteSoundLevel : 0;
             dock.InputLevel = overlay.InputLevel;
             try { config = Config.Load(); }
             catch (InvalidDataException ex) { config = new Config(); MessageBox.Show(ex.Message + " Defaults will be used.", "Notewll"); }
@@ -190,6 +194,7 @@ namespace LocalDictation
             var menu = new ContextMenuStrip();
             menu.Items.Add("Open Notewll", null, (s, e) => ShowHub("Home"));
             menu.Items.Add("Show floating toolbar", null, (s, e) => { config.ShowToolbar = true; dock.SetVisibility(true); try { config.Save(); } catch (Exception ex) { ReportIssue("Toolbar shown, but its preference could not be saved: " + ex.Message); } });
+            AddHandsFreeMenu(menu);
             menu.Items.Add("Recover last dictation", null, (s, e) => ShowRecovery());
             menu.Items.Add("Issues & recovery", null, (s, e) => { ShowHub("Home"); if (hub != null) hub.ShowIssues(); });
             menu.Items.Add("Hide toolbar for 1 hour", null, (s, e) => dock.Snooze());
@@ -197,26 +202,29 @@ namespace LocalDictation
             menu.Items.Add("Preferences", null, (s, e) => ShowHub("Preferences"));
             menu.Items.Add("Stop and save note", null, (s, e) => { if (hub != null && hub.IsNoteRecording) hub.ToggleNote(hub.NoteMode); });
             menu.Items.Add("Exit", null, (s, e) => ExitThread());
-            tray = new NotifyIcon { Icon = AppLogo.Icon, Text = "Notewll 0.9.0 - hold " + config.Hotkey, Visible = true, ContextMenuStrip = menu };
+            tray = new NotifyIcon { Icon = AppLogo.Icon, Text = "Notewll 0.10.0 - hold " + config.Hotkey, Visible = true, ContextMenuStrip = menu };
             dock.RestorePosition(config.ToolbarX, config.ToolbarY);
             dock.Configure(config.ReducedMotion); dock.ConfigureBall(config); dock.CancelWrite = Cancel;
-            dock.ToggleWrite = () => { if (state.Current == AppState.Recording) StopRecording(); else StartRecording(); UpdateDock(); };
+            dock.ToggleWrite = () => { if (handsFree != null || handsFreeStarting) { StopHandsFree(); return; } if (state.Current == AppState.Recording) StopRecording(); else StartRecording(); UpdateDock(); };
             dock.ToggleNote = () => { EnsureHub(); ToggleNotes(hub.PreferredNoteSource, "Note"); }; dock.ToggleMeeting = () => ToggleNotes(config.MeetingSource, "Meeting");
             dock.PositionSaved = position => { config.ToolbarX = position.X; config.ToolbarY = position.Y; try { config.Save(); } catch { } };
             dock.SetVisibility(config.ShowToolbar);
             noteStatus.Tick += (s, e) =>
             {
+                CheckHandsFreeDevice(); LocalSnapshots.Schedule(config, hub != null && hub.NoteBusy);
                 UpdateDock();
                 bool recordingNote = hub != null && hub.IsNoteRecording;
                 if (config.ShowVoiceIndicator && recordingNote && !noteIndicator && state.Current == AppState.Idle) { DisplayVoiceIndicator("Recording from " + hub.NoteMode + " notes", Color.FromArgb(45, 120, 75)); noteIndicator = true; }
                 if (!recordingNote && noteIndicator) { if (state.Current == AppState.Idle) overlay.Hide(); noteIndicator = false; }
-                tray.Text = hub != null && hub.IsNoteRecording ? "Notewll - recording " + hub.NoteMode + " notes" : "Notewll - hold " + (config.Hotkey.Length > 30 ? config.Hotkey.Substring(0, 30) : config.Hotkey); }; noteStatus.Start();
+                tray.Text = handsFree != null ? "Notewll - hands-free microphone ON" : hub != null && hub.IsNoteRecording ? "Notewll - recording " + hub.NoteMode + " notes" : "Notewll - hold " + (config.Hotkey.Length > 30 ? config.Hotkey.Substring(0, 30) : config.Hotkey); }; noteStatus.Start();
             tray.DoubleClick += (s, e) => ShowHub("Home");
+            Microsoft.Win32.SystemEvents.SessionSwitch += SessionChangedForHandsFree;
             SetShortcutBindings();
             liveTimer.Tick += (s, e) => LiveTick();
             mouseProc = (code, message, data) =>
             {
                 var mousePoint = code >= 0 ? Marshal.PtrToStructure<Point>(data) : Point.Empty;
+                if (code >= 0 && (message == (IntPtr)0x201 || message == (IntPtr)0x204 || message == (IntPtr)0x207 || message == (IntPtr)0x20A)) Interlocked.Increment(ref handsFreeInputEpoch);
                 if (code >= 0 && !dock.Bounds.Contains(mousePoint) && (message == (IntPtr)0x201 || message == (IntPtr)0x204 || message == (IntPtr)0x207 || message == (IntPtr)0x20A) && (state.Current == AppState.Recording || state.Current == AppState.Processing)) liveInterrupted = true;
                 return Native.CallNextHookEx(mouseHook, code, message, data);
             };
@@ -251,7 +259,7 @@ namespace LocalDictation
         }
         void Prewarm()
         {
-            var cfg = config.Copy(); int revision = ++engineGeneration; prewarming = true;
+            var cfg = config.Copy(); if (SmartCleanup.Enabled(cfg)) System.Threading.Tasks.Task.Run(() => SmartCleanup.Warm()); int revision = ++engineGeneration; prewarming = true;
             engineReadiness = cfg.AccurateDictationEnabled ? "Preparing accurate local speech..." : "Preparing basic offline speech...";
             if (hub != null && !hub.IsDisposed) hub.SetReadiness(engineReadiness);
             ThreadPool.QueueUserWorkItem(_ =>
@@ -280,6 +288,7 @@ namespace LocalDictation
         {
             if (state.Current != AppState.Idle || recovering) return;
             if (hub != null && hub.IsTesting) return;
+            if (handsFree != null || handsFreeStarting) StopHandsFree("Paused for shortcut dictation.");
             if (config.AccurateDictationEnabled && (prewarming || !AccurateSpeech.Ready)) { if (!prewarming) Prewarm(); UpdateDock(); return; }
             target = Native.GetForegroundWindow();
             historyStarted = DateTime.UtcNow; historyPlatform = ActivityHistory.ForegroundApp(target); historyWindowTitle = Native.WindowTitle(target);
@@ -292,14 +301,14 @@ namespace LocalDictation
                 recorder = rec;
             }
             catch (Exception ex) { Fail("Microphone problem: " + ex.Message); return; }
-            state.Move(AppState.Recording); generation++; if (liveRecognition != null) liveRecognition.Dispose(); liveRecognition = new LiveRecognition(sessionAccurate ? config.Copy() : null); liveInserted = ""; liveInterrupted = mouseHook == IntPtr.Zero; liveTimer.Start();
+            state.Move(AppState.Recording); generation++; if (liveRecognition != null) liveRecognition.Dispose(); liveRecognition = new LiveRecognition(sessionAccurate ? config.Copy() : null); var cleanupConfig = config.Copy(); sentenceCleanup = SmartCleanup.Enabled(cleanupConfig) ? new LiveGrammar(text => SmartCleanup.Refine(cleanupConfig, text), false) : null; liveInserted = ""; liveInterrupted = mouseHook == IntPtr.Zero; liveTimer.Start();
             DisplayVoiceIndicator("● Recording from " + recorder.DeviceName + (recorder.FellBack ? " (saved mic not found — using default)" : "") + " — release " + config.Hotkey, Color.FromArgb(190, 45, 45));
         }
 
         void LiveTick()
         {
             if (state.Current != AppState.Recording || recorder == null || Interlocked.CompareExchange(ref liveBusy, 1, 0) != 0) return;
-            byte[] pcm = recorder.Snapshot(); int peak = recorder.Peak; int gen = generation; var cfg = config; var recognition = liveRecognition;
+            byte[] pcm = recorder.Snapshot(); int peak = recorder.Peak; int gen = generation; var cfg = config; var recognition = liveRecognition; var grammar = sentenceCleanup;
             if (pcm.Length < 8000 || peak < 150) { Interlocked.Exchange(ref liveBusy, 0); return; }
             if (sessionAccurate && pcm.Length - lastAccurateBytes < 16000) { Interlocked.Exchange(ref liveBusy, 0); return; }
             lastAccurateBytes = pcm.Length;
@@ -309,7 +318,9 @@ namespace LocalDictation
                 try
                 {
                     string text = recognition.Snapshot(pcm, peak, false);
-                    string formatted = WritingFormat.Compose(cfg, text.Trim());
+                    string baseline = WritingFormat.Compose(cfg, text.Trim());
+                    string polished = grammar == null || !SmartCleanup.Enabled(cfg) ? baseline : grammar.Resolve(baseline, 0);
+                    string formatted = SmartCleanup.Accept(baseline, polished) ? polished : baseline;
                     if (!overlay.IsDisposed) PostUi(() => { if (gen == generation && state.Current == AppState.Recording && sessionLiveWriting) ApplyLiveText(formatted); });
                 }
                 catch { } // The complete recording still goes through normal recovery on release.
@@ -338,7 +349,7 @@ namespace LocalDictation
             state.Move(AppState.Processing);
             DisplayVoiceIndicator("Transcribing locally…", Color.FromArgb(50, 90, 170));
             int gen = ++generation;
-            var cfg = config; var recognition = liveRecognition;
+            var cfg = config; var recognition = liveRecognition; var grammar = sentenceCleanup;
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
@@ -346,7 +357,11 @@ namespace LocalDictation
                     if (!liveIdle.WaitOne(12000)) throw new SttException("Local speech did not finish. Open Recover last dictation to keep or retry the captured audio.");
                     string raw = recognition != null ? recognition.Snapshot(pcm, peak, true) : SpeechEngine.Transcribe(cfg, MicRecorder.ToWav(MicRecorder.Normalize(pcm, peak)));
                     if (recognition != null) recognition.Dispose();
-                    PostUi(() => { if (!exiting && gen == generation) Finish(raw, raw); });
+                    string baseline = WritingFormat.Compose(cfg, raw);
+                    string polished = grammar == null || !SmartCleanup.Enabled(cfg) ? baseline : grammar.ResolveFinal(baseline, 4000);
+                    if (!SmartCleanup.Accept(baseline, polished)) polished = baseline;
+                    string finalText = polished;
+                    PostUi(() => { if (!exiting && gen == generation) Finish(raw, finalText); });
                 }
                 catch (Exception ex) { PostUi(() => { if (gen == generation) Fail(ex.Message); }); }
             });
@@ -387,7 +402,7 @@ namespace LocalDictation
                 var original = recovery.Audio; var audio = original == null ? null : (byte[])original.Clone(); if (audio == null || recovering) { done(); return; } int revision = recovery.Revision; recovering = true;
                 ThreadPool.QueueUserWorkItem(_ =>
                 {
-                    try { string recognized = DictationSpeech.Transcribe(config, audio); string recovered = WritingFormat.Compose(config, recognized); if (revision == recovery.Revision) { recovery.Text = recovered; recovery.Message = "Recovered. Copy only what you need."; } }
+                    try { string recognized = DictationSpeech.Transcribe(config, audio); string recovered = SmartCleanup.Complete(config, recognized, 4000); if (revision == recovery.Revision) { recovery.Text = recovered; recovery.Message = "Recovered. Copy only what you need."; } }
                     catch (Exception ex) { if (revision == recovery.Revision) recovery.Message = ex.Message; }
                     finally { recovering = false; Array.Clear(audio, 0, audio.Length); done(); }
                 });
@@ -444,6 +459,11 @@ namespace LocalDictation
                 if ((data.flags & 0x10) != 0) return Native.CallNextHookEx(hook, code, wParam, lParam);
                 bool down = wParam == (IntPtr)Native.WM_KEYDOWN || wParam == (IntPtr)Native.WM_SYSKEYDOWN;
                 bool up = wParam == (IntPtr)Native.WM_KEYUP || wParam == (IntPtr)Native.WM_SYSKEYUP;
+                if (down || up) Interlocked.Increment(ref handsFreeInputEpoch);
+                if (vk == Native.VK_ESCAPE && down && (handsFree != null || handsFreeStarting)) { PostUi(() => StopHandsFree()); return (IntPtr)1; }
+                if (up && bookmarkKeysDown.Remove(vk)) return (IntPtr)1;
+                if (down && vk >= 0x31 && vk <= 0x33 && (Native.GetAsyncKeyState(0x11) & 0x8000) != 0 && (Native.GetAsyncKeyState(0x12) & 0x8000) != 0 && hub != null && hub.IsNoteRecording)
+                { if (bookmarkKeysDown.Add(vk)) { string kind = new[] { "Important", "Question", "Follow up" }[vk - 0x31]; PostUi(() => { if (hub != null && hub.Notes != null) hub.Notes.AddBookmark(kind); }); } return (IntPtr)1; }
                 if (hub != null && hub.IsCapturingShortcut)
                 {
                     if (down || up) hub.CaptureShortcutKey(vk, down);
@@ -474,10 +494,13 @@ namespace LocalDictation
                 hub = new SettingsForm(config, lastRaw, lastCleaned) { CloseToTray = true };
                 hub.SetIssues(issues); hub.DismissIssues = () => { issues.Clear(); hub.SetIssues(issues); };
                 hub.Notes.IssueReported = ReportIssue;
-                hub.CanTest = () => state.Current == AppState.Idle;
+                hub.CanTest = () => { if (handsFree != null || handsFreeStarting) StopHandsFree("Paused for a recording or microphone test."); return state.Current == AppState.Idle && VoiceEnrollmentDialog.OpenCount == 0; };
+                hub.ToggleHandsFree = ToggleHandsFree; hub.PauseHandsFree = () => StopHandsFree();
+                hub.SetHandsFreeStatus(handsFree != null || handsFreeStarting, handsFreeMessage);
                 hub.OnSaved = next =>
                 {
                     if (state.Current != AppState.Idle || hub.IsTesting) throw new InvalidOperationException("Finish dictating before saving preferences.");
+                    if (handsFree != null || handsFreeStarting) StopHandsFree("Preferences changed. Start hands-free again when ready.");
                     next.Save();
                     if (next.StartWithWindows || next.StartWithWindows != Startup.Enabled) Startup.Set(next.StartWithWindows);
                     bool speechChanged = next.AccurateDictationEnabled != config.AccurateDictationEnabled || next.QualityPython != config.QualityPython;
@@ -505,7 +528,8 @@ namespace LocalDictation
 
         protected override void ExitThreadCore()
         {
-            exiting = true; generation++; liveTimer.Stop();
+            Microsoft.Win32.SystemEvents.SessionSwitch -= SessionChangedForHandsFree;
+            exiting = true; StopHandsFree(); ThreadPool.QueueUserWorkItem(_ => MyVoiceMatcher.Shutdown()); generation++; liveTimer.Stop();
             if (recorder != null) { var tail = recorder.Stop(); recovery.Audio = tail; }
             if (recoveryWindow != null) recoveryWindow.Dispose();
             dock.Close(); dock.Dispose();

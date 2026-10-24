@@ -49,6 +49,12 @@ namespace LocalDictation
                 rows.Add(new[] { TimeSpan.FromSeconds((segment.TranscriptStartFrame ?? segment.StartFrame) / 16000.0).ToString(@"hh\:mm\:ss"), NoteStore.Speaker(note, segment), segment.RawText ?? segment.Text });
             return rows.ToArray();
         }
+        public static void SavePreview(string approvedText, string path)
+        {
+            string full = Path.GetFullPath(path), temp = full + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try { NotesPdf.Save(approvedText, temp); if (File.Exists(full)) File.Replace(temp, full, null); else File.Move(temp, full); }
+            finally { if (File.Exists(temp)) File.Delete(temp); }
+        }
         public static void Save(NoteDocument note, string path)
         {
             string full = Path.GetFullPath(path); string temporary = Path.Combine(Path.GetDirectoryName(full), ".export-" + Guid.NewGuid().ToString("N") + Path.GetExtension(full));

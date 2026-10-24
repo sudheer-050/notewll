@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
@@ -12,14 +12,14 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-[assembly: AssemblyVersion("0.9.0.0")]
+[assembly: AssemblyVersion("0.10.0.0")]
 [assembly: AssemblyTitle("Notewll Setup")]
 [assembly: AssemblyProduct("Notewll")]
 namespace LocalDictationSetup
 {
     sealed class SetupForm : Form
     {
-        const string Version = "0.9.0", RegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\LocalDictation";
+        const string Version = "0.10.0", RegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\LocalDictation";
         const string ModelUrl = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip";
         const string RuntimeUrl = "https://github.com/alphacep/vosk-api/releases/download/v0.3.45/vosk-win64-0.3.45.zip";
         readonly string destination = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "LocalDictation");
@@ -97,7 +97,7 @@ namespace LocalDictationSetup
                 if (!File.Exists(Path.Combine(destination, "native", "libvosk.dll")) || !File.Exists(Path.Combine(destination, "model-small-en-us", "am", "final.mdl"))) throw new IOException("The speech files are incomplete. Retry setup.");
                 string exe = Path.Combine(destination, "LocalDictation.exe");
                 if (File.Exists(exe)) File.Copy(exe, Path.Combine(destination, "LocalDictation.previous.exe"), true);
-                File.WriteAllBytes(exe, Resource("Application")); Directory.CreateDirectory(Path.Combine(destination, "engine")); File.WriteAllBytes(Path.Combine(destination, "engine", "quality_worker.py"), Resource("QualityWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "accurate_worker.py"), Resource("AccurateWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "silero_vad.onnx"), Resource("SpeechDetector")); File.WriteAllBytes(Path.Combine(destination, "THIRD_PARTY_NOTICES.md"), Resource("Notices"));
+                File.WriteAllBytes(exe, Resource("Application")); Directory.CreateDirectory(Path.Combine(destination, "engine")); File.WriteAllBytes(Path.Combine(destination, "engine", "semantic_worker.py"), Resource("SemanticWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "setup_semantic.ps1"), Resource("SemanticSetup")); Directory.CreateDirectory(Path.Combine(destination, "engine")); File.WriteAllBytes(Path.Combine(destination, "engine", "voice_match_worker.py"), Resource("VoiceMatchWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "setup_handsfree.ps1"), Resource("VoiceMatchSetup")); File.WriteAllBytes(Path.Combine(destination, "engine", "quality_worker.py"), Resource("QualityWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "accurate_worker.py"), Resource("AccurateWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "silero_vad.onnx"), Resource("SpeechDetector")); File.WriteAllBytes(Path.Combine(destination, "THIRD_PARTY_NOTICES.md"), Resource("Notices"));
                 cancellation.Token.ThrowIfCancellationRequested(); status.Text = "3/4 - Checking the installed speech model...";
                 var verified = await Task.Run(() =>
                 {
@@ -229,10 +229,12 @@ namespace LocalDictationSetup
                     }
                     File.WriteAllBytes(Path.Combine(target, "LocalDictation.exe"), Resource("Application"));
                     File.WriteAllBytes(Path.Combine(target, "Uninstall.exe"), Resource("Uninstaller"));
+                    Directory.CreateDirectory(Path.Combine(target,"engine")); File.WriteAllBytes(Path.Combine(target,"engine","voice_match_worker.py"),Resource("VoiceMatchWorker")); File.WriteAllBytes(Path.Combine(target,"engine","setup_handsfree.ps1"),Resource("VoiceMatchSetup"));
                     Console.Write("bundle-ok|offline=true"); return 0;
                 } catch (Exception ex) { Console.Error.Write(ex.Message); return 2; }
             }
             if (args.Length > 0 && args[0] == "--inspect") { using (var hash = SHA256.Create()) Console.Write("version=" + Version + "|platform=Windows-x64|scope=current-user|engine=Vosk-small-English|model-download=none|offline-install=true|payload-sha256=" + BitConverter.ToString(hash.ComputeHash(Resource("Application"))).Replace("-", "").ToLowerInvariant()); return 0; }
+            if (args.Length > 0 && args[0] == "--inspect-handsfree") { using (var hash = SHA256.Create()) Console.Write("worker-sha256=" + BitConverter.ToString(hash.ComputeHash(Resource("VoiceMatchWorker"))).Replace("-", "").ToLowerInvariant() + "|setup-sha256=" + BitConverter.ToString(hash.ComputeHash(Resource("VoiceMatchSetup"))).Replace("-", "").ToLowerInvariant()); return 0; }
             if (args.Length > 0 && args[0] == "--inspect-accuracy") { using (var hash = SHA256.Create()) Console.Write("worker-sha256=" + BitConverter.ToString(hash.ComputeHash(Resource("AccurateWorker"))).Replace("-", "").ToLowerInvariant() + "|detector-sha256=" + BitConverter.ToString(hash.ComputeHash(Resource("SpeechDetector"))).Replace("-", "").ToLowerInvariant()); return 0; }
             if (args.Length == 4 && args[0] == "--test-extract") { try { Extract(args[1], args[2], args[3] == "dll"); return 0; } catch (Exception ex) { Console.Error.Write(ex.Message); return 2; } }
             Application.EnableVisualStyles();

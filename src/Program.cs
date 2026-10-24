@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -37,6 +37,16 @@ namespace LocalDictation
             {
                 switch (args[0])
                 {
+                    case "--roadmap-smoke": RoadmapVerification.Run(args[1]); return 0;
+                    case "--handsfree-worker-smoke": HandsFreeVerification.Worker(args[1], args[2], args[3], args.Skip(4).ToArray()); return 0;
+                    case "--handsfree-preview":
+                        {
+                            System.IO.Directory.CreateDirectory(args[1]); Config.DiagnosticDataRoot(System.IO.Path.Combine(args[1], "data"));
+                            Application.EnableVisualStyles();
+                            using (var form = new SettingsForm(new Config(), "", "", new NoteStore(System.IO.Path.Combine(args[1], "notes")))) { form.ShowPage("Preferences"); form.SelectSettingsCategory("Hands-free"); form.Show(); Application.DoEvents(); CaptureHub(form, System.IO.Path.Combine(args[1], "handsfree.png")); form.CloseToTray = false; form.Close(); }
+                            Console.Write("handsfree-preview-ok"); return 0;
+                        }
+                    case "--handsfree-smoke": HandsFreeVerification.Run(args[1]); return 0;
                     case "--ball-preferences-smoke":
                         BallVerification.Run(args[1]); return 0;
                     case "--pronunciation-smoke":
@@ -103,6 +113,18 @@ namespace LocalDictation
                         HistoryVerification.Run(args[1]); return 0;
                     case "--ux-smoke":
                         UxVerification.Run(args[1]); return 0;
+                    case "--smart-cleanup-smoke": SmartCleanupVerification.Run(); return 0;
+                    case "--smart-cleanup-batch":
+                        {
+                            var cfg = new Config(); SmartCleanup.Warm();
+                            foreach (string raw in args.Skip(1)) { var timer = Stopwatch.StartNew(); string baseline = WritingFormat.Compose(cfg, raw); string text = SmartCleanup.Refine(cfg, baseline) ?? baseline; Console.WriteLine(new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { Raw = raw, Text = text, Candidate = SmartCleanup.LastCandidate, Status = SmartCleanup.Status, InferenceMs = timer.ElapsedMilliseconds })); }
+                            return 0;
+                        }
+                    case "--smart-cleanup":
+                        {
+                            var cfg = new Config(); var timer = Stopwatch.StartNew(); SmartCleanup.Warm(); string raw = String.Join(" ", args.Skip(1)); string baseline = WritingFormat.Compose(cfg, raw); string text = SmartCleanup.Refine(cfg, baseline) ?? baseline;
+                            Console.Write(new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(new { Raw = raw, Text = text, Status = SmartCleanup.Status, ElapsedMs = timer.ElapsedMilliseconds })); return 0;
+                        }
                     case "--format-text":
                         Console.Write(WritingFormat.Compose(new Config { WritingStyle = args[1] }, args[2])); return 0;
                     case "--validate-update":

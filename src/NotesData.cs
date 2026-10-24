@@ -50,14 +50,28 @@ namespace LocalDictation
             try
             {
             using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write)) using (var zip = new ZipArchive(file, ZipArchiveMode.Create))
-                foreach (var note in store.List()) lock (note)
+                foreach (var note in store.List(false).Where(n => n.Status != "Recording" && n.Status != "Paused" && n.Status != "Transcribing")) lock (note)
                     foreach (string source in Directory.GetFiles(store.Folder(note)))
                         if ((File.GetAttributes(source) & FileAttributes.ReparsePoint) == 0) zip.CreateEntryFromFile(source, note.Id + "/" + Path.GetFileName(source), CompressionLevel.Fastest);
             if (File.Exists(full)) File.Replace(temporary, full, null, true); else File.Move(temporary, full);
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }
-        public static int Restore(NoteStore store, string path)
+        public static string RestorePreview(NoteStore store, string path)
+        {
+            int count = Restore(store, path, true);
+            using (var zip = ZipFile.OpenRead(path))
+            {
+                var titles = new List<string>();
+                foreach (var entry in zip.Entries.Where(e => e.FullName.Replace('\\', '/').EndsWith("/note.json", StringComparison.Ordinal))) using (var reader = new StreamReader(entry.Open()))
+                {
+                    var note = new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Deserialize<NoteDocument>(reader.ReadToEnd());
+                    titles.Add((Directory.Exists(store.Folder(note)) ? "Skip existing: " : "Restore: ") + note.Title);
+                }
+                return count + " new notes; " + NotesData.Size(zip.Entries.Sum(e => e.Length)) + " uncompressed. Existing notes are kept.\r\n\r\n" + String.Join("\r\n", titles.Take(20)) + (titles.Count > 20 ? "\r\n...and " + (titles.Count - 20) + " more." : "");
+            }
+        }
+        public static int Restore(NoteStore store, string path, bool preview = false)
         {
             Directory.CreateDirectory(store.Root); string staging = Path.Combine(store.Root, ".import-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(staging);
             int imported = 0;
@@ -86,7 +100,7 @@ namespace LocalDictation
                 foreach (string folder in Directory.GetDirectories(staging))
                 {
                     string target = Path.Combine(store.Root, Path.GetFileName(folder)); if (Directory.Exists(target)) continue;
-                    Directory.Move(folder, target); imported++;
+                    if (!preview) Directory.Move(folder, target); imported++;
                 }
                 return imported;
             }

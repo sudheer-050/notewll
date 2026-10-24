@@ -12,7 +12,7 @@ namespace LocalDictation
     static class ActivityHistory
     {
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr SendMessage(IntPtr window, int message, IntPtr value, string text);
-        internal static void SearchCue(TextBox box) { SendMessage(box.Handle, 0x1501, IntPtr.Zero, "Search your history..."); }
+        internal static void SearchCue(TextBox box) { SendMessage(box.Handle, 0x1501, IntPtr.Zero, "Search history, project:name, tag:topic, person:name..."); }
         [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
         public static string ForegroundApp(IntPtr window)
         {

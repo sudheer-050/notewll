@@ -8,9 +8,10 @@ namespace LocalDictation
     {
         readonly object gate = new object();
         readonly Func<string, string> refine;
+        readonly bool allowPrefix;
         Task<string> pending;
         string pendingRaw, cachedRaw, cachedText;
-        public LiveGrammar(Func<string, string> refine) { this.refine = refine; }
+        public LiveGrammar(Func<string, string> refine, bool allowPrefix = true) { this.refine = refine; this.allowPrefix = allowPrefix; }
         public void Offer(string raw)
         {
             if (String.IsNullOrWhiteSpace(raw)) return;
@@ -27,6 +28,13 @@ namespace LocalDictation
                 });
             }
         }
+        public string ResolveFinal(string raw, int waitMilliseconds)
+        {
+            var clock = System.Diagnostics.Stopwatch.StartNew(); Task<string> task;
+            lock (gate) task = pending;
+            if (task != null && !task.IsCompleted) task.Wait(waitMilliseconds);
+            return Resolve(raw, Math.Max(0, waitMilliseconds - (int)clock.ElapsedMilliseconds));
+        }
         public string Resolve(string raw, int waitMilliseconds)
         {
             if (String.IsNullOrWhiteSpace(raw)) return "";
@@ -37,7 +45,7 @@ namespace LocalDictation
             {
                 if (raw == cachedRaw) return cachedText;
                 // Keep a corrected prefix as speech grows, but only across a whole-word boundary.
-                if (!String.IsNullOrEmpty(cachedRaw) && raw.StartsWith(cachedRaw + " ", StringComparison.Ordinal))
+                if (allowPrefix && !String.IsNullOrEmpty(cachedRaw) && raw.StartsWith(cachedRaw + " ", StringComparison.Ordinal))
                     fallback = cachedText.TrimEnd('.', '!', '?') + raw.Substring(cachedRaw.Length);
                 task = pendingRaw == raw ? pending : null;
             }

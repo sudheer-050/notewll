@@ -13,7 +13,8 @@ namespace LocalDictation
         Label personalDate, personalSaveState;
         TableLayoutPanel personalLayout;
         bool personalLayoutRunning;
-        bool PersonalEditing { get { return !Busy && (selected != null ? ActivityHistory.Kind(selected) == "Note" : writingFresh); } }
+        bool reviewingConversation;
+        bool PersonalEditing { get { return !reviewingConversation && !Busy && (selected != null ? ActivityHistory.Kind(selected) == "Note" : writingFresh); } }
         void BuildPersonalNoteEditor()
         {
             writtenOriginalHost = written.Parent;

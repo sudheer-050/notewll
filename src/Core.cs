@@ -1,4 +1,4 @@
-using System.Linq;
+﻿using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,8 +8,8 @@ using System.Web.Script.Serialization;
 
 [assembly: System.Reflection.AssemblyTitle("Notewll")]
 [assembly: System.Reflection.AssemblyProduct("Notewll")]
-[assembly: System.Reflection.AssemblyVersion("0.9.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("0.9.0.0")]
+[assembly: System.Reflection.AssemblyVersion("0.10.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("0.10.0.0")]
 
 namespace LocalDictation
 {
@@ -43,9 +43,13 @@ namespace LocalDictation
         // "system-default" or the exact name of a capture device from the settings list.
         public string Microphone { get; set; }
         public bool CleanupEnabled { get; set; }
+        public bool SmartCleanupEnabled { get; set; }
         public bool QualityEnabled { get; set; }
         public bool AccurateDictationEnabled { get; set; }
         public string QualityPython { get; set; }
+        public string HandsFreePython { get; set; }
+        public string HandsFreeApps { get; set; }
+        public bool ScheduledBackups { get; set; }
         public bool AutoPaste { get; set; }
         public bool LiveWriting { get; set; }
         public string PasteMethod { get; set; }
@@ -90,9 +94,10 @@ namespace LocalDictation
             BallSizePercent=100; BallExpandedSizePercent=100; BallImagePath="";
             BallAppearance="Moon"; BallGravity="Earth"; BallColorMode="Original colors"; BallColor1="#B9C1CB"; BallColor2="#F2F0D9"; BallGradientAngle=45;
             TypingWordsPerMinute = 40;
-            QualityPython = ""; QualityEnabled = false;
+            HandsFreeApps = ""; QualityPython = ""; HandsFreePython = ""; QualityEnabled = false;
             NotesSort = "Newest"; ExportFormat = "PDF"; WritingStyle = "Standard";
             UpdateManifestUrl = UpdatePublisherThumbprint = ""; Theme = "System"; ShowToolbar = true; ShowVoiceIndicator = false; ReduceNoise = true; ReducedMotion = false; NoteMicrophoneId = NoteOutputId = ""; Personalization = new List<PersonalRule>();
+            SmartCleanupEnabled = true;
             Hotkey = "F8"; NotesHotkey = "Ctrl+Shift+N"; NotesSource = "Microphone"; MeetingSource = "Both"; ToolbarX = ToolbarY = Int32.MinValue; Microphone = DefaultMic; CleanupEnabled = true; AutoPaste = true; LiveWriting = true; PasteMethod = "Auto"; StartWithWindows = false; AutoStartStt = true;
             SttUrl = "http://127.0.0.1:5000";
             SttLauncher = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @"Documents\projects\ollama-personal-model\holly_server.py");
@@ -199,7 +204,7 @@ namespace LocalDictation
         public static string Clean(string input)
         {
             if (String.IsNullOrWhiteSpace(input)) return "";
-            string text = Regex.Replace(input.Trim(), @"\s+", " ");
+            string text = Regex.Replace(SmartCleanup.Basic(input.Trim()), @"\s+", " ");
 
             // "scratch that" retracts the clause (or previous sentence) before it.
             Match m;
@@ -223,7 +228,6 @@ namespace LocalDictation
 
             text = Regex.Replace(text, @"(?i)(^|[\s,;])(?:um+|uh+|uhm+|erm+|hmm+)(?=[\s,;.!?]|$),?", "$1");
             text = Regex.Replace(text, @"(?i)\b(" + Dup + @")(?:\s+\1\b)+", "$1");
-
             text = Regex.Replace(text, @"[ \t]+([,.:;!?])", "$1");
             text = Regex.Replace(text, @",\s*,+", ",");
             text = Regex.Replace(text, @"^[\s,;:]+", "");

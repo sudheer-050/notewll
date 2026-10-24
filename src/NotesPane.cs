@@ -104,6 +104,7 @@ namespace LocalDictation
             pulse.Tick += (s, e) => RefreshState(); pulse.Start();
             BuildReviewTools(library, workspace, noteTab, transcriptTab, search, copy, folder);
             BuildNotesBrowser(search);
+            BuildConversationTools();
             Select(null);
         }
         void ShowNewNoteMenu(Control anchor)
@@ -140,7 +141,7 @@ namespace LocalDictation
         void Select(NoteDocument document)
         {
             if (populating) return;
-            SaveEdits(); player.Dispose(); playerOpen = false; uiError = ""; selected = document; if (document != null) writingFresh = false; populating = true;
+            SaveEdits(); player.Dispose(); playerOpen = false; uiError = ""; reviewingConversation = false; selected = document; if (document != null) writingFresh = false; populating = true;
             title.Text = document == null ? "" : document.Title; name.Text = document == null ? store.SavedName : document.UserName;
             if (document != null && ActivityHistory.Kind(document) == "Note" && !document.EditableTextInitialized)
             {
@@ -234,17 +235,18 @@ namespace LocalDictation
         void EditDetails()
         {
             if (selected == null || Busy && ReferenceEquals(selected, session.Document)) return; SaveEdits();
-            using (var dialog = new Form { Text = "Edit note details", Icon = AppLogo.Icon, ClientSize = new Size(470, 330), Font = Font, FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent, MaximizeBox = false, MinimizeBox = false, AutoScaleMode = AutoScaleMode.None })
+            using (var dialog = new Form { Text = "Edit note details", Icon = AppLogo.Icon, ClientSize = new Size(470, 390), Font = Font, FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent, MaximizeBox = false, MinimizeBox = false, AutoScaleMode = AutoScaleMode.None })
             {
-                var grid = Grid(2, 5); grid.Padding = new Padding(22); grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100)); grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-                for (int i = 0; i < 5; i++) grid.RowStyles.Add(new RowStyle(SizeType.Percent, 20)); dialog.Controls.Add(grid);
+                var grid = Grid(2, 6); grid.Padding = new Padding(22); grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100)); grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+                for (int i = 0; i < 6; i++) grid.RowStyles.Add(new RowStyle(SizeType.Percent, 20)); dialog.Controls.Add(grid);
                 TextBox editedTitle = Field("Title"), editedName = Field("Your name"), editedPeople = Field("People"); editedTitle.Text = selected.Title; editedName.Text = selected.UserName; editedPeople.Text = String.Join(", ", selected.Participants);
                 grid.Controls.Add(Caption("Title"), 0, 0); grid.Controls.Add(editedTitle, 1, 0); grid.Controls.Add(Caption("Your name"), 0, 1); grid.Controls.Add(editedName, 1, 1); grid.Controls.Add(Caption("People"), 0, 2); grid.Controls.Add(editedPeople, 1, 2);
                 var editedTags = Field("Tags"); editedTags.Text = selected.Tags; grid.Controls.Add(Caption("Tags"), 0, 3); grid.Controls.Add(editedTags, 1, 3);
-                var apply = new HubButton { Text = "Save details", Dock = DockStyle.Fill, Primary = true }; grid.Controls.Add(apply, 1, 4);
+                var apply = new HubButton { Text = "Save details", Dock = DockStyle.Fill, Primary = true }; grid.Controls.Add(apply, 1, 5);
+                var project = Field("Project"); project.Text = selected.Project; grid.Controls.Add(Caption("Project"), 0, 4); grid.Controls.Add(project, 1, 4);
                 apply.Click += (sender, args) =>
                 {
-                    try { lock (selected) { if (editedTitle.Text.Trim() != selected.Title && !String.IsNullOrWhiteSpace(editedTitle.Text)) { selected.Title = editedTitle.Text.Trim(); selected.AutoTitle = false; } if (editedName.Text.Trim() != selected.UserName) { selected.UserName = editedName.Text.Trim(); selected.NameEdited = true; store.SavedName = selected.UserName; } selected.Tags = editedTags.Text.Trim(); selected.Participants = editedPeople.Text.Split(',').Select(v => v.Trim()).Where(v => v.Length > 0).Distinct().ToList(); store.Save(selected); } title.Text = selected.Title; name.Text = selected.UserName; RefreshState(); dialog.Close(); }
+                    try { lock (selected) { if (editedTitle.Text.Trim() != selected.Title && !String.IsNullOrWhiteSpace(editedTitle.Text)) { selected.Title = editedTitle.Text.Trim(); selected.AutoTitle = false; } if (editedName.Text.Trim() != selected.UserName) { selected.UserName = editedName.Text.Trim(); selected.NameEdited = true; store.SavedName = selected.UserName; } selected.Project = project.Text.Trim(); selected.Tags = editedTags.Text.Trim(); selected.Participants = editedPeople.Text.Split(',').Select(v => v.Trim()).Where(v => v.Length > 0).Distinct().ToList(); store.Save(selected); } title.Text = selected.Title; name.Text = selected.UserName; RefreshState(); dialog.Close(); }
                     catch (Exception ex) { MessageBox.Show(dialog, ex.Message, "Could not save details"); }
                 };
                 using (var graphics = dialog.CreateGraphics()) { float scale = graphics.DpiX / 96f; if (scale != 1) dialog.Scale(new SizeF(scale, scale)); }
