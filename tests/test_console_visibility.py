@@ -6,11 +6,16 @@ import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
+pytest.importorskip('flask', reason='Optional separate Holly server dependency is not installed')
 from flask import Flask, jsonify, request
 
 
 def test_transcription_and_gpu_probe_request_hidden_console_windows(tmp_path, monkeypatch):
     backend = Path(__file__).parents[2] / "ollama-personal-model" / "holly_server.py"
+    if not backend.is_file():
+        pytest.skip('This check targets the separate Holly repository, which is not part of Notewll')
     tree = ast.parse(backend.read_text(encoding="utf-8"))
     functions = [node for node in tree.body if isinstance(node, ast.FunctionDef)
                  and node.name in {"transcribe", "_free_vram_mib"}]
@@ -35,3 +40,4 @@ def test_transcription_and_gpu_probe_request_hidden_console_windows(tmp_path, mo
         assert context["transcribe"]().get_json()["text"] == "Speech was transcribed."
     assert [call[0][0] for call in calls] == ["nvidia-smi", "ffmpeg"]
     assert list(tmp_path.iterdir()) == []
+
