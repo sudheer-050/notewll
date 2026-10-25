@@ -4,7 +4,7 @@ using System.IO;
 using System.Threading;
 using System.Web.Script.Serialization;
 
-namespace LocalDictation
+namespace Notewll
 {
     static class FastDictationChecks
     {

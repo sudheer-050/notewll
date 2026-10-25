@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
-namespace LocalDictation
+namespace Notewll
 {
     static class SemanticSearch
     {

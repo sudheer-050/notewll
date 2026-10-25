@@ -1,6 +1,6 @@
 using System;
 using System.Drawing;
-namespace LocalDictation
+namespace Notewll
 {
     // Gravity, inelastic wall/floor collisions, air drag and rolling friction in desktop pixels.
     sealed class BallPhysics

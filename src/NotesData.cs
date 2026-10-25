@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Web.Script.Serialization;
 
-namespace LocalDictation
+namespace Notewll
 {
     static class NotesData
     {
@@ -32,7 +32,7 @@ namespace LocalDictation
         internal static long ApplicationBytes(string root)
         {
             long total = Bytes(Path.Combine(root, "native")) + Bytes(Path.Combine(root, "model-small-en-us"));
-            foreach (string file in new[] { "LocalDictation.exe", "Uninstall.exe", "THIRD_PARTY_NOTICES.md" }) { string path = Path.Combine(root, file); if (File.Exists(path)) total += new FileInfo(path).Length; }
+            foreach (string file in new[] { "Notewll.exe", "LocalDictation.exe", "Uninstall.exe", "THIRD_PARTY_NOTICES.md" }) { string path = Path.Combine(root, file); if (File.Exists(path)) total += new FileInfo(path).Length; }
             return total;
         }
         public static string Size(long bytes) { return (bytes / 1048576.0).ToString("0.0") + " MB"; }

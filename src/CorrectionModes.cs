@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 
-namespace LocalDictation
+namespace Notewll
 {
     sealed partial class SettingsForm
     {

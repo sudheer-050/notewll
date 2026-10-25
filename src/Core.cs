@@ -11,7 +11,7 @@ using System.Web.Script.Serialization;
 [assembly: System.Reflection.AssemblyVersion("0.10.0.0")]
 [assembly: System.Reflection.AssemblyFileVersion("0.10.0.0")]
 
-namespace LocalDictation
+namespace Notewll
 {
     enum AppState { Idle, Recording, Processing, Error }
 

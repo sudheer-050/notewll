@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
-namespace LocalDictation
+namespace Notewll
 {
     static class Pronunciations
     {

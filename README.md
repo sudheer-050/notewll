@@ -1,6 +1,12 @@
-﻿<p align="center"><img src="assets/local-dictation.png" width="76" alt="Notewll logo"></p>
+﻿<p align="center"><img src="assets/notewll.png" width="76" alt="Notewll logo"></p>
 
 # Notewll — local dictation, voice notes and meeting transcripts for Windows
+
+The application and build executable are `Notewll.exe`. The product page is
+`https://notewll.myhai.org/`; old `/projects/dotflow/` links redirect there. Upgrades keep
+the existing `%LOCALAPPDATA%\LocalDictation` data folder, Windows registration,
+and a `LocalDictation.exe` compatibility copy for old pinned shortcuts. These
+internal compatibility names do not change the product's name or move your notes.
 
 **Speak naturally. Keep the words that matter.**
 
@@ -8,7 +14,7 @@ Turn speech into text, catch a thought, and return to the conversation. Notewll 
 
 ![Notewll 0.10.0: speak naturally and keep the words that matter](assets/showcase/0.10.0/launch-card.svg)
 
-[**Download Windows preview**](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Setup-0.10.0.exe) · [Small update for existing installs](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Small-Update.zip) · [Product and demo](https://myhai.org/projects/dotflow/) · [Portfolio case study](https://sudheerkumargandiboyana.com/projects/dotflow/) · [User guide](USER_GUIDE.md)
+[**Download Windows preview**](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Setup-0.10.0.exe) · [Small update for existing installs](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Small-Update.zip) · [Product and demo](https://notewll.myhai.org/) · [Portfolio case study](https://sudheerkumargandiboyana.com/projects/notewll/) · [User guide](USER_GUIDE.md)
 
 **Windows 10/11 x64 · English · 0.10.0 unsigned preview.** The installer includes the standard offline speech engine. Semantic search and voice matching use optional, separately installed local models.
 

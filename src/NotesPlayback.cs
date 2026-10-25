@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
-namespace LocalDictation
+namespace Notewll
 {
     sealed class NotesPlayback : IDisposable
     {

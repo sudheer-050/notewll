@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-namespace LocalDictation
+namespace Notewll
 {
     static class SmartCleanup
     {

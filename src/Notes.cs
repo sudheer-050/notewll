@@ -7,7 +7,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Web.Script.Serialization;
 
-namespace LocalDictation
+namespace Notewll
 {
     sealed class NoteSegment
     {

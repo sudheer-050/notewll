@@ -32,7 +32,7 @@ Choose Raw text to keep recognized words unchanged, or Modified text to remove f
 
 The text-mode update passed 164 automated checks, with 2 skipped checks and 2 excluded live microphone checks. Original text, saved settings and installer packaging were checked. Physical microphone capture and typing into target applications still require desktop acceptance. This is an unsigned Windows preview.
 
-[Product, demo and screenshots](https://myhai.org/projects/dotflow/) · [User guide](https://github.com/sudheer-050/notewll/blob/main/USER_GUIDE.md) · [Source](https://github.com/sudheer-050/notewll)
+[Product, demo and screenshots](https://notewll.myhai.org/) · [User guide](https://github.com/sudheer-050/notewll/blob/main/USER_GUIDE.md) · [Source](https://github.com/sudheer-050/notewll)
 
 
 ---

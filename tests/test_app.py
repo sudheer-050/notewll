@@ -7,11 +7,11 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).parents[1]
-EXE = ROOT / "build" / "LocalDictation.exe"
+EXE = ROOT / "build" / "Notewll.exe"
 
 
 def run(*args, timeout=120):
-    # LocalDictation.exe is a GUI-subsystem binary; piping its output makes the shell wait for it.
+    # Notewll.exe is a GUI-subsystem binary; piping its output makes the shell wait for it.
     return subprocess.run([str(EXE), *args], text=True, capture_output=True, timeout=timeout)
 
 

@@ -1,8 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 $root = Split-Path -Parent $PSScriptRoot
-$a = [Reflection.Assembly]::LoadFile((Join-Path $root 'build/LocalDictation.exe'))
-$t = $a.GetType('LocalDictation.FloatingDock')
+$a = [Reflection.Assembly]::LoadFile((Join-Path $root 'build/Notewll.exe'))
+$t = $a.GetType('Notewll.FloatingDock')
 $f = [Reflection.BindingFlags]'Instance,NonPublic'
 $d = [Activator]::CreateInstance($t,$true)
 function Assert($ok,$message) { if (!$ok) { throw $message } }
@@ -28,7 +28,7 @@ try {
     $checkHover = $t.GetMethod('CheckHover',$f)
     $checkHover.Invoke($d,@()) | Out-Null
     Assert (!$t.GetField('expanded',$f).GetValue($d)) 'Hover opened the tray without a click.'
-    $native = $a.GetType('LocalDictation.Native').GetMethod('SendMessage')
+    $native = $a.GetType('Notewll.Native').GetMethod('SendMessage')
     $point = [IntPtr](($d.Height / 2 -shl 16) -bor ($d.Width / 2))
     $native.Invoke($null,@([IntPtr]$d.Handle,[uint32]0x201,[IntPtr]1,$point)) | Out-Null
     $native.Invoke($null,@([IntPtr]$d.Handle,[uint32]0x202,[IntPtr]::Zero,$point)) | Out-Null

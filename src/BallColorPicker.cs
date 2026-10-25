@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
-namespace LocalDictation
+namespace Notewll
 {
     // Continuous hue + saturation/value range; no list of preset colors.
     sealed class BallColorRange : Control

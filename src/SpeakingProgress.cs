@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
-namespace LocalDictation
+namespace Notewll
 {
     // Text changes are review opportunities, never a language proficiency score.
     sealed class SpeakingProgress

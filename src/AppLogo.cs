@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Reflection;
 
-namespace LocalDictation
+namespace Notewll
 {
     static class AppLogo
     {

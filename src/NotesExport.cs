@@ -9,7 +9,7 @@ using System.Linq;
 using System.Security;
 using System.Text;
 
-namespace LocalDictation
+namespace Notewll
 {
     static class NoteExport
     {

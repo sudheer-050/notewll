@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
-namespace LocalDictation
+namespace Notewll
 {
     static class ReleaseUpdates
     {

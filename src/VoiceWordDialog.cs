@@ -4,7 +4,7 @@ using System.IO;
 using System.Media;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-namespace LocalDictation
+namespace Notewll
 {
     sealed class VoiceWordDialog : Form
     {

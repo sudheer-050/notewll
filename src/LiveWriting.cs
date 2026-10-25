@@ -1,6 +1,6 @@
 using System;
 
-namespace LocalDictation
+namespace Notewll
 {
     sealed class LiveEdit
     {

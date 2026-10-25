@@ -2,10 +2,10 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
-$assembly = [Reflection.Assembly]::LoadFile((Join-Path $root 'build\LocalDictation.exe'))
-$overlayType = $assembly.GetType('LocalDictation.Overlay')
+$assembly = [Reflection.Assembly]::LoadFile((Join-Path $root 'build\Notewll.exe'))
+$overlayType = $assembly.GetType('Notewll.Overlay')
 $overlay = [Activator]::CreateInstance($overlayType, $true)
-$native = $assembly.GetType('LocalDictation.Native')
+$native = $assembly.GetType('Notewll.Native')
 $foregroundBefore = $native.GetMethod('GetForegroundWindow').Invoke($null, @())
 $output = Join-Path $root 'output\overlay-preview'
 [void](New-Item -ItemType Directory -Path $output -Force)

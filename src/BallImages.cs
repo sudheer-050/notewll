@@ -4,7 +4,7 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Security.Cryptography;
-namespace LocalDictation
+namespace Notewll
 {
     static class BallImages
     {

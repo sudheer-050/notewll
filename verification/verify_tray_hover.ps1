@@ -1,10 +1,10 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 $root = Split-Path -Parent $PSScriptRoot
-$assembly = [Reflection.Assembly]::LoadFile((Join-Path $root 'build/LocalDictation.exe'))
+$assembly = [Reflection.Assembly]::LoadFile((Join-Path $root 'build/Notewll.exe'))
 $private = [Reflection.BindingFlags]'Instance,NonPublic'
-$type = $assembly.GetType('LocalDictation.FloatingDock')
-$buttonType = $assembly.GetType('LocalDictation.DockButton')
+$type = $assembly.GetType('Notewll.FloatingDock')
+$buttonType = $assembly.GetType('Notewll.DockButton')
 $dock = [Activator]::CreateInstance($type, $true)
 function Paint-Button($button, $graphics, $offset) {
     $state = $graphics.Save()
@@ -66,7 +66,7 @@ try {
         [Windows.Forms.Cursor]::Position = [Drawing.Point]::new($dock.Left + $dock.Width / 2, $dock.Top + $dock.Height / 2)
         $dock.Show()
         [Windows.Forms.Application]::DoEvents()
-        $native = $assembly.GetType('LocalDictation.Native').GetMethod('SendMessage')
+        $native = $assembly.GetType('Notewll.Native').GetMethod('SendMessage')
         $nativeBefore = [Drawing.Bitmap]::new($dock.Width,$dock.Height)
         $dock.DrawToBitmap($nativeBefore,[Drawing.Rectangle]::new([Drawing.Point]::Empty,$dock.Size))
         try {

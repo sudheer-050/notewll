@@ -4,7 +4,7 @@ using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace LocalDictation
+namespace Notewll
 {
     sealed class VoiceKpis : Control
     {

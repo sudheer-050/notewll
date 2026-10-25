@@ -87,7 +87,7 @@ In Preferences > Ball:
 - Choose local image opens a file browser for PNG, JPEG, BMP or GIF images. The app keeps a normalized local copy, centers it inside the ball, and rotates it with the surface. Remove image removes the overlay without deleting the original file. GIFs use a still frame.
 - Apply saves the choices; Reset ball defaults restores the default moon, Earth gravity, default sizes and no custom image.
 
-To verify this feature from a source checkout, run `scripts/build.ps1`, then `build/LocalDictation.exe --ball-preferences-smoke output/ball-preferences`. Additional focused checks are under `verification/verify_ball_physics.ps1` and `verification/verify_tray_*.ps1`.
+To verify this feature from a source checkout, run `scripts/build.ps1`, then `build/Notewll.exe --ball-preferences-smoke output/ball-preferences`. Additional focused checks are under `verification/verify_ball_physics.ps1` and `verification/verify_tray_*.ps1`.
 
 
 ## Optional hands-free, my voice only (0.10.0 preview)

@@ -7,6 +7,9 @@ function Run([string]$Program, [string[]]$Arguments) {
     if ($LASTEXITCODE -ne 0) { throw "$Program failed. Source was not confirmed published." }
 }
 try {
+    # Refresh from current source so publishing cannot restore a stale product name.
+    & "$PSScriptRoot\build_setup.ps1"
+    & "$PSScriptRoot\publish_release.ps1" -PrepareOnly
     if (!(Test-Path -LiteralPath (Join-Path $snapshot 'src\Program.cs'))) { throw 'Prepared source snapshot is missing.' }
     $files = Get-ChildItem -LiteralPath $snapshot -File -Recurse
     if ($files | Where-Object { $_.Extension -in '.exe','.wav','.pcm','.pfx','.p12' -or $_.FullName -match '[\\/]\.git[\\/]' }) { throw 'Unexpected binary, private data or Git metadata in snapshot.' }

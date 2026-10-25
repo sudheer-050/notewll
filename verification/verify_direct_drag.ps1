@@ -1,9 +1,9 @@
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Drawing,System.Windows.Forms
 $root=Split-Path -Parent $PSScriptRoot
-$a=[Reflection.Assembly]::LoadFile((Join-Path $root 'build/LocalDictation.exe'))
+$a=[Reflection.Assembly]::LoadFile((Join-Path $root 'build/Notewll.exe'))
 $f=[Reflection.BindingFlags]'Instance,NonPublic'
-$t=$a.GetType('LocalDictation.FloatingDock'); $d=[Activator]::CreateInstance($t,$true)
+$t=$a.GetType('Notewll.FloatingDock'); $d=[Activator]::CreateInstance($t,$true)
 try {
   $t.GetField('hover',$f).GetValue($d).Stop(); $d.RestorePosition(400,0); $d.Show()
   $t.GetField('dragStart',$f).SetValue($d,[Windows.Forms.Cursor]::Position)

@@ -1,8 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 $root = Split-Path -Parent $PSScriptRoot
-$assembly = [Reflection.Assembly]::LoadFile((Join-Path $root 'build/LocalDictation.exe'))
-$type = $assembly.GetType('LocalDictation.FloatingDock')
+$assembly = [Reflection.Assembly]::LoadFile((Join-Path $root 'build/Notewll.exe'))
+$type = $assembly.GetType('Notewll.FloatingDock')
 $private = [Reflection.BindingFlags]'Instance,NonPublic'
 $dock = [Activator]::CreateInstance($type, $true)
 function Frame {

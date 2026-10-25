@@ -4,7 +4,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace LocalDictation
+namespace Notewll
 {
     sealed class AudioEndpoint
     {

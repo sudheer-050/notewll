@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.IO;
-namespace LocalDictation
+namespace Notewll
 {
     sealed class NoteBookmark { public string Kind { get; set; } public double Seconds { get; set; } }
     sealed class NoteTask

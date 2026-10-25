@@ -1,7 +1,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace LocalDictation
+namespace Notewll
 {
     // One speculative correction at a time; release never waits for the model indefinitely.
     sealed class LiveGrammar

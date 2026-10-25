@@ -1,6 +1,6 @@
 using System;
 
-namespace LocalDictation
+namespace Notewll
 {
     // Conservative level gate, not speaker identification or a full speech detector.
     // Keep the original timeline and avoid amplifying room noise into words.

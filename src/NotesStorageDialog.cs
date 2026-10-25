@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Web.Script.Serialization;
-namespace LocalDictation
+namespace Notewll
 {
     static partial class NotesStorageDialog
     {

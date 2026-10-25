@@ -5,7 +5,7 @@ using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace LocalDictation
+namespace Notewll
 {
     // Native-resolution, per-pixel transparency: no bitmap stretching or jagged window region.
     sealed class Overlay : Form

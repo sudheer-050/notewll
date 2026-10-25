@@ -1,8 +1,8 @@
 $ErrorActionPreference = 'Stop'
-$assembly = [Reflection.Assembly]::LoadFrom((Join-Path $PSScriptRoot '..\build\LocalDictation.exe'))
+$assembly = [Reflection.Assembly]::LoadFrom((Join-Path $PSScriptRoot '..\build\Notewll.exe'))
 $flags = [Reflection.BindingFlags]'Instance,NonPublic,Public'
-$appType = $assembly.GetType('LocalDictation.DictationApp')
-function New-Internal($name) { [Activator]::CreateInstance($assembly.GetType("LocalDictation.$name"), $true) }
+$appType = $assembly.GetType('Notewll.DictationApp')
+function New-Internal($name) { [Activator]::CreateInstance($assembly.GetType("Notewll.$name"), $true) }
 function Set-Field($app, $name, $value) { $appType.GetField($name, $flags).SetValue($app, $value) }
 
 # Exercise the actual empty-result handler without installing keyboard hooks or opening the hub.
@@ -10,7 +10,7 @@ foreach ($inputText in @('', '   ')) {
     $app = [Runtime.Serialization.FormatterServices]::GetUninitializedObject($appType)
     $state = New-Internal 'StateMachine'
     $stateType = $state.GetType()
-    $enum = $assembly.GetType('LocalDictation.AppState')
+    $enum = $assembly.GetType('Notewll.AppState')
     foreach ($step in @('Recording', 'Processing')) {
         $stateType.GetMethod('Move').Invoke($state, @([Enum]::Parse($enum, $step))) | Out-Null
     }

@@ -1,5 +1,5 @@
 ﻿using System;
-namespace LocalDictation
+namespace Notewll
 {
     static class SmartCleanupVerification
     {

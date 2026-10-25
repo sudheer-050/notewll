@@ -15,7 +15,7 @@ using Microsoft.Win32;
 [assembly: AssemblyVersion("0.10.0.0")]
 [assembly: AssemblyTitle("Notewll Setup")]
 [assembly: AssemblyProduct("Notewll")]
-namespace LocalDictationSetup
+namespace NotewllSetup
 {
     sealed class SetupForm : Form
     {
@@ -53,7 +53,7 @@ namespace LocalDictationSetup
             {
                 if (!finished) { await Run(); return; }
                 if (uninstall) { Close(); return; }
-                try { Process.Start(new ProcessStartInfo { FileName = Path.Combine(destination, "LocalDictation.exe"), WorkingDirectory = destination, UseShellExecute = true }); Close(); }
+                try { Process.Start(new ProcessStartInfo { FileName = Path.Combine(destination, "Notewll.exe"), WorkingDirectory = destination, UseShellExecute = true }); Close(); }
                 catch (Exception ex) { status.Text = "Could not open the app: " + ex.Message + "\nTry the Notewll shortcut in the Start menu."; }
             };
             FormClosing += (s, e) => { if (busy) e.Cancel = true; };
@@ -66,9 +66,9 @@ namespace LocalDictationSetup
         }
         bool StopRunning()
         {
-            foreach (var process in Process.GetProcessesByName("LocalDictation")) using (process)
+            foreach (var process in Process.GetProcessesByName("Notewll").Concat(Process.GetProcessesByName("LocalDictation"))) using (process)
             {
-                try { if (!String.Equals(process.MainModule.FileName, Path.Combine(destination, "LocalDictation.exe"), StringComparison.OrdinalIgnoreCase)) continue; }
+                try { if (!new[] { "Notewll.exe", "LocalDictation.exe" }.Any(name => String.Equals(process.MainModule.FileName, Path.Combine(destination, name), StringComparison.OrdinalIgnoreCase))) continue; }
                 catch { continue; }
                 try { using (var signal = EventWaitHandle.OpenExisting("LocalDictation.Exit")) signal.Set(); }
                 catch (WaitHandleCannotBeOpenedException) { status.Text = "Exit Notewll from its tray menu, then click the button again. Notes will be kept."; return false; }
@@ -95,9 +95,11 @@ namespace LocalDictationSetup
                     string zip = Path.Combine(cache, "vosk-model-small-en-us-0.15.zip"); await Unpack(ModelUrl, zip, "2/4 - English model"); await Task.Run(() => Extract(zip, Path.Combine(destination, "model-small-en-us"), false, cancellation.Token)); cancellation.Token.ThrowIfCancellationRequested(); File.WriteAllText(Path.Combine(destination, "model-small-en-us", ".installed"), "small-en-us-0.15");
                 }
                 if (!File.Exists(Path.Combine(destination, "native", "libvosk.dll")) || !File.Exists(Path.Combine(destination, "model-small-en-us", "am", "final.mdl"))) throw new IOException("The speech files are incomplete. Retry setup.");
-                string exe = Path.Combine(destination, "LocalDictation.exe");
-                if (File.Exists(exe)) File.Copy(exe, Path.Combine(destination, "LocalDictation.previous.exe"), true);
+                string exe = Path.Combine(destination, "Notewll.exe");
+                if (File.Exists(exe)) File.Copy(exe, Path.Combine(destination, "Notewll.previous.exe"), true);
                 File.WriteAllBytes(exe, Resource("Application")); Directory.CreateDirectory(Path.Combine(destination, "engine")); File.WriteAllBytes(Path.Combine(destination, "engine", "semantic_worker.py"), Resource("SemanticWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "setup_semantic.ps1"), Resource("SemanticSetup")); Directory.CreateDirectory(Path.Combine(destination, "engine")); File.WriteAllBytes(Path.Combine(destination, "engine", "voice_match_worker.py"), Resource("VoiceMatchWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "setup_handsfree.ps1"), Resource("VoiceMatchSetup")); File.WriteAllBytes(Path.Combine(destination, "engine", "quality_worker.py"), Resource("QualityWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "accurate_worker.py"), Resource("AccurateWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "silero_vad.onnx"), Resource("SpeechDetector")); File.WriteAllBytes(Path.Combine(destination, "THIRD_PARTY_NOTICES.md"), Resource("Notices"));
+                // Keep older pinned shortcuts and startup entries working after the rename.
+                File.Copy(exe, Path.Combine(destination, "LocalDictation.exe"), true);
                 cancellation.Token.ThrowIfCancellationRequested(); status.Text = "3/4 - Checking the installed speech model...";
                 var verified = await Task.Run(() =>
                 {
@@ -115,7 +117,7 @@ namespace LocalDictationSetup
                 foreach (string oldName in new[] { "Local Dictation.lnk", "Dotflow.lnk", "Dotwell.lnk" })
                 {
                     string legacy = Path.Combine(Environment.GetFolderPath(parent), oldName);
-                    if (File.Exists(legacy)) { object shell = null, link = null; try { shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell")); link = shell.GetType().InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { legacy }); string target = Convert.ToString(link.GetType().InvokeMember("TargetPath", BindingFlags.GetProperty, null, link, null)); if (String.Equals(target, exe, StringComparison.OrdinalIgnoreCase)) File.Delete(legacy); } finally { if (link != null) Marshal.FinalReleaseComObject(link); if (shell != null) Marshal.FinalReleaseComObject(shell); } }
+                    if (File.Exists(legacy)) { object shell = null, link = null; try { shell = Activator.CreateInstance(Type.GetTypeFromProgID("WScript.Shell")); link = shell.GetType().InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { legacy }); string target = Convert.ToString(link.GetType().InvokeMember("TargetPath", BindingFlags.GetProperty, null, link, null)); if (new[] { exe, Path.Combine(destination, "LocalDictation.exe") }.Any(name => String.Equals(target, name, StringComparison.OrdinalIgnoreCase))) File.Delete(legacy); } finally { if (link != null) Marshal.FinalReleaseComObject(link); if (shell != null) Marshal.FinalReleaseComObject(shell); } }
                 }
                 MakeShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), "Notewll.lnk"), exe);
                 if (desktop.Checked) MakeShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Notewll.lnk"), exe);
@@ -206,7 +208,7 @@ namespace LocalDictationSetup
         void RemoveApplication()
         {
             // Delete only known program files. Never recurse into user data or remove the running uninstaller.
-            foreach (string file in new[] { "LocalDictation.exe", "LocalDictation.previous.exe", "THIRD_PARTY_NOTICES.md" }) { string path = Path.Combine(destination, file); if (File.Exists(path)) File.Delete(path); }
+            foreach (string file in new[] { "Notewll.exe", "Notewll.previous.exe", "LocalDictation.exe", "LocalDictation.previous.exe", "THIRD_PARTY_NOTICES.md" }) { string path = Path.Combine(destination, file); if (File.Exists(path)) File.Delete(path); }
             foreach (var parent in new[] { Environment.SpecialFolder.Programs, Environment.SpecialFolder.DesktopDirectory }) { string path = Path.Combine(Environment.GetFolderPath(parent), "Notewll.lnk"); if (File.Exists(path)) File.Delete(path); }
             string data = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LocalDictation");
             if (removeSpeech.Checked) { RemoveKnownDirectory(Path.Combine(destination, "native"), destination); RemoveKnownDirectory(Path.Combine(destination, "model-small-en-us"), destination); RemoveKnownDirectory(Path.Combine(data, "SetupCache"), data); }
@@ -227,6 +229,7 @@ namespace LocalDictationSetup
                         if (!MatchesHash(zip, name == "SpeechModelZip" ? ModelHash : RuntimeHash)) throw new IOException("Invalid embedded archive");
                         Extract(zip, Path.Combine(target, name == "SpeechModelZip" ? "model-small-en-us" : "native"), name == "SpeechRuntimeZip"); File.Delete(zip);
                     }
+                    File.WriteAllBytes(Path.Combine(target, "Notewll.exe"), Resource("Application"));
                     File.WriteAllBytes(Path.Combine(target, "LocalDictation.exe"), Resource("Application"));
                     File.WriteAllBytes(Path.Combine(target, "Uninstall.exe"), Resource("Uninstaller"));
                     Directory.CreateDirectory(Path.Combine(target,"engine")); File.WriteAllBytes(Path.Combine(target,"engine","voice_match_worker.py"),Resource("VoiceMatchWorker")); File.WriteAllBytes(Path.Combine(target,"engine","setup_handsfree.ps1"),Resource("VoiceMatchSetup"));

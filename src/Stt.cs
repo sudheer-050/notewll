@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Web.Script.Serialization;
 
-namespace LocalDictation
+namespace Notewll
 {
     sealed class SttException : Exception { public SttException(string message) : base(message) { } }
     static class VoskNative

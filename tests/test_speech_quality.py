@@ -10,7 +10,7 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_personalization_keeps_snippets_out_of_recognition():
-    result = subprocess.run([str(ROOT / 'build/LocalDictation.exe'), '--personalization-smoke'], capture_output=True, text=True)
+    result = subprocess.run([str(ROOT / 'build/Notewll.exe'), '--personalization-smoke'], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert result.stdout == 'personalization-ok'
 
@@ -56,7 +56,7 @@ def test_recognition_uses_current_vocabulary_on_every_request(monkeypatch):
 
 
 def test_voice_identity_and_late_name_linking(tmp_path):
-    result = subprocess.run([str(ROOT / 'build/LocalDictation.exe'), '--voice-smoke', str(tmp_path)], capture_output=True, text=True)
+    result = subprocess.run([str(ROOT / 'build/Notewll.exe'), '--voice-smoke', str(tmp_path)], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
     assert 'voices-ok' in result.stdout
 

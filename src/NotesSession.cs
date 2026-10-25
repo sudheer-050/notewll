@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 
-namespace LocalDictation
+namespace Notewll
 {
     sealed class NotesSession : IDisposable
     {

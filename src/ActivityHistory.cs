@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
-namespace LocalDictation
+namespace Notewll
 {
     static class ActivityHistory
     {

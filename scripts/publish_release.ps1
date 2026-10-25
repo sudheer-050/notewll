@@ -24,7 +24,7 @@ foreach ($folder in @('src','assets','installer','scripts','engine','verificatio
         Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
     }
 }
-foreach ($file in @('.gitignore','README.md','USER_GUIDE.md','BACKLOG_STATUS.md','FIX_REPORT_0.7.0.md','UX_USER_REVIEW_0.6.1.md','RELEASE_NOTES.md','THIRD_PARTY_NOTICES.md','requirements-dev.txt','SPEECH_QUALITY_UPDATE.md','Install quiet dictation.cmd','Update Notewll accuracy.cmd','setup.ps1','Update Local Dictation.vbs')) { Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination (Join-Path $stage $file) -Force }
+foreach ($file in @('.gitignore','README.md','USER_GUIDE.md','BACKLOG_STATUS.md','FIX_REPORT_0.7.0.md','UX_USER_REVIEW_0.6.1.md','RELEASE_NOTES.md','THIRD_PARTY_NOTICES.md','requirements-dev.txt','SPEECH_QUALITY_UPDATE.md','Install quiet dictation.cmd','Update Notewll accuracy.cmd','setup.ps1','Update Notewll.vbs')) { Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination (Join-Path $stage $file) -Force }
 $tests = Join-Path $stage 'tests'; New-Item -ItemType Directory -Path $tests -Force | Out-Null
 foreach ($file in @('test_app.py','test_setup.py','test_note_exports.py','test_release.py','test_completion.py','test_live_grammar.py','test_speech_quality.py','test_ux_fixes.py','test_accurate_speech.py','test_accuracy_scoring.py')) { Copy-Item -LiteralPath (Join-Path $projectRoot "tests\$file") -Destination (Join-Path $tests $file) -Force }
 & "$PSScriptRoot\prepare_release.ps1" -Repository $Repository
@@ -54,7 +54,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $stage '.git'))) {
 if ($LASTEXITCODE -ne 0) { throw 'Could not stage the release snapshot.' }
 & git -C $stage diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
-    & git -C $stage commit -m "Release Local Dictation $version as Notewll Windows preview"
+    & git -C $stage commit -m "Release Notewll $version Windows preview"
     if ($LASTEXITCODE -ne 0) { throw 'Could not commit the release snapshot.' }
 }
 if (-not $exists) {

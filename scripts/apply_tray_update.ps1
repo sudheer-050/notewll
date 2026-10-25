@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$built = Join-Path $root 'build\LocalDictation.exe'
-$installed = Join-Path $env:LOCALAPPDATA 'Programs\LocalDictation\LocalDictation.exe'
+$built = Join-Path $root 'build\Notewll.exe'
+$installed = Join-Path $env:LOCALAPPDATA 'Programs\LocalDictation\Notewll.exe'
 $log = Join-Path $root 'output\tray-update.log'
 Start-Transcript -Path $log -Force | Out-Null
 try {

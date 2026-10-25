@@ -68,7 +68,7 @@ def test_word_error_benchmark_counts_insertions_deletions_substitutions():
 
 
 def test_update_rejects_unsigned_installer_and_malformed_manifests(tmp_path):
-    result = run('--verify-update-signature', str(ROOT / 'build/LocalDictation.exe'), '0' * 40)
+    result = run('--verify-update-signature', str(ROOT / 'build/Notewll.exe'), '0' * 40)
     assert result.returncode == 0 and result.stdout == 'invalid'
     for values in ({'Version': '0.7.0', 'InstallerUrl': 'http://example.com/setup.exe', 'Sha256': 'a' * 64},
                    {'Version': 'bad', 'InstallerUrl': 'https://example.com/setup.exe', 'Sha256': 'a' * 64},

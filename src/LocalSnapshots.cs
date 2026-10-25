@@ -4,7 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
-namespace LocalDictation
+namespace Notewll
 {
     static class LocalSnapshots
     {

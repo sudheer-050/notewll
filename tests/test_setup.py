@@ -22,7 +22,7 @@ def test_setup_contains_the_exact_current_application():
     result = subprocess.run([str(SETUP), "--inspect"], capture_output=True, text=True, timeout=15)
     assert result.returncode == 0
     assert "engine=Vosk-small-English|model-download=none|offline-install=true" in result.stdout
-    assert result.stdout.endswith(hashlib.sha256((ROOT / "build" / "LocalDictation.exe").read_bytes()).hexdigest())
+    assert result.stdout.endswith(hashlib.sha256((ROOT / "build" / "Notewll.exe").read_bytes()).hexdigest())
 
 
 def test_setup_contains_the_current_voice_matcher_and_optional_setup():
@@ -68,7 +68,9 @@ def test_single_file_bundle_loads_its_own_offline_speech_engine(tmp_path):
     assert (tmp_path / "native/libvosk.dll").is_file()
     assert (tmp_path / "model-small-en-us/am/final.mdl").is_file()
     assert (tmp_path / "Uninstall.exe").stat().st_size < 200_000
-    result = subprocess.run([str(tmp_path / "LocalDictation.exe"), "--installed-speech-check"], capture_output=True, text=True, timeout=90)
+    # Existing pinned shortcuts must launch the same renamed payload.
+    assert (tmp_path / "Notewll.exe").read_bytes() == (tmp_path / "LocalDictation.exe").read_bytes()
+    result = subprocess.run([str(tmp_path / "Notewll.exe"), "--installed-speech-check"], capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stderr + result.stdout
     assert result.stdout == "speech-ready|offline=true"
     assert hashlib.sha256((ROOT / "dist/Notewll-Setup.exe").read_bytes()).digest() == hashlib.sha256(SETUP.read_bytes()).digest()

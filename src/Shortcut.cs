@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace LocalDictation
+namespace Notewll
 {
     // One shared representation for the recorder, saved configuration and global hook.
     static class Shortcut

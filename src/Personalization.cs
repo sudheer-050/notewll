@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Drawing;
 
-namespace LocalDictation
+namespace Notewll
 {
     sealed class PersonalRule
     {

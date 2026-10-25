@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace LocalDictation
+namespace Notewll
 {
     // Compose the scrolling viewport and its children in one Windows paint pass.
     // Local double buffering alone does not cover native scrolling of child windows.

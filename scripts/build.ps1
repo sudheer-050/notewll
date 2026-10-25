@@ -7,10 +7,12 @@ New-Item -ItemType Directory -Force $build, $dist | Out-Null
 $csc = "$env:WINDIR\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if (-not (Test-Path $csc)) { throw '.NET Framework 4.x compiler not found.' }
 $sources = Get-ChildItem "$root\src\*.cs" | ForEach-Object { $_.FullName }
-& $csc /nologo /target:winexe /platform:x64 /optimize+ /win32icon:"$root\assets\local-dictation.ico" /resource:"$root\assets\local-dictation.ico",AppLogo.ico /resource:"$root\assets\local-dictation.png",AppLogo.png /win32manifest:"$root\src\app.manifest" /out:"$build\LocalDictation.exe" /reference:System.Security.dll /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll $sources
+& $csc /nologo /target:winexe /platform:x64 /optimize+ /win32icon:"$root\assets\notewll.ico" /resource:"$root\assets\notewll.ico",AppLogo.ico /resource:"$root\assets\notewll.png",AppLogo.png /win32manifest:"$root\src\app.manifest" /out:"$build\Notewll.exe" /reference:System.Security.dll /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll $sources
 if ($LASTEXITCODE -ne 0) { throw 'Compilation failed.' }
-Copy-Item "$build\LocalDictation.exe" "$dist\LocalDictation-$version.exe" -Force
-Write-Host "Built $dist\LocalDictation-$version.exe"
+# Legacy tooling may still open this filename; the current artifact is Notewll.exe.
+Copy-Item "$build\Notewll.exe" "$build\LocalDictation.exe" -Force
+Copy-Item "$build\Notewll.exe" "$dist\Notewll-$version.exe" -Force
+Write-Host "Built $dist\Notewll-$version.exe"
 
 New-Item -ItemType Directory -Force "$build\engine" | Out-Null
 Copy-Item "$root\engine\quality_worker.py" "$build\engine\quality_worker.py" -Force

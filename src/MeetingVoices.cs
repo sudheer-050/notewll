@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace LocalDictation
+namespace Notewll
 {
     static class MeetingVoices
     {

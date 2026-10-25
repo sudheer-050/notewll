@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
-namespace LocalDictation
+namespace Notewll
 {
     static class BallVerification
     {

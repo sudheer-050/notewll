@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-namespace LocalDictation
+namespace Notewll
 {
     sealed class BallProfile
     {

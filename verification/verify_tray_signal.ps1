@@ -1,8 +1,8 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 $root = Split-Path -Parent $PSScriptRoot
-$assembly = [Reflection.Assembly]::LoadFile((Join-Path $root 'build/LocalDictation.exe'))
-$type = $assembly.GetType('LocalDictation.FloatingDock')
+$assembly = [Reflection.Assembly]::LoadFile((Join-Path $root 'build/Notewll.exe'))
+$type = $assembly.GetType('Notewll.FloatingDock')
 $private = [Reflection.BindingFlags]'Instance,NonPublic'
 $dock = [Activator]::CreateInstance($type,$true)
 $advance = $type.GetMethod('AdvanceSignal',$private)
@@ -85,7 +85,7 @@ try {
     $dock.CancelWrite = [Action] { $script:cancelClicks++ }
     $dock.ToggleNote = [Action] { $script:noteClicks++ }
     $dock.ToggleMeeting = [Action] { $script:meetingClicks++ }
-    $send = $assembly.GetType('LocalDictation.Native').GetMethod('SendMessage')
+    $send = $assembly.GetType('Notewll.Native').GetMethod('SendMessage')
     foreach ($kind in @('dictation','processing','note','meeting')) {
         State ($kind -eq 'dictation') ($kind -eq 'processing') ($kind -eq 'note' -or $kind -eq 'meeting') ($kind -eq 'meeting')
         $point = [IntPtr](($dock.Height / 2 -shl 16) -bor ($dock.Width / 2))

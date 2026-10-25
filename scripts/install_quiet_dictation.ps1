@@ -2,15 +2,17 @@ param([string]$QualityPython = '')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $destination = Join-Path $env:LOCALAPPDATA 'Programs\LocalDictation'
-$installed = Join-Path $destination 'LocalDictation.exe'
-$build = Join-Path $root 'build\LocalDictation.exe'
-if (-not (Test-Path -LiteralPath $installed)) { throw 'Install the latest Notewll Setup first.' }
+$installed = Join-Path $destination 'Notewll.exe'
+$build = Join-Path $root 'build\Notewll.exe'
+if (-not (Test-Path -LiteralPath $installed) -and -not (Test-Path -LiteralPath (Join-Path $destination 'LocalDictation.exe'))) { throw 'Install the latest Notewll Setup first.' }
 $payload = @(
-    @{ Source = $build; Name = 'LocalDictation.exe' },
+    @{ Source = $build; Name = 'Notewll.exe' },
     @{ Source = (Join-Path $root 'engine\quality_worker.py'); Name = 'engine\quality_worker.py' },
     @{ Source = (Join-Path $root 'engine\accurate_worker.py'); Name = 'engine\accurate_worker.py' },
     @{ Source = (Join-Path $root 'assets\silero_vad.onnx'); Name = 'engine\silero_vad.onnx' },
-    @{ Source = (Join-Path $root 'THIRD_PARTY_NOTICES.md'); Name = 'THIRD_PARTY_NOTICES.md' }
+    @{ Source = (Join-Path $root 'THIRD_PARTY_NOTICES.md'); Name = 'THIRD_PARTY_NOTICES.md' },
+    # Preserve existing pinned shortcuts and startup entries while upgrading.
+    @{ Source = $build; Name = 'LocalDictation.exe' }
 )
 foreach ($item in $payload) {
     if (-not (Test-Path -LiteralPath $item.Source)) { throw "Build Notewll first. Missing: $($item.Source)" }
@@ -45,7 +47,7 @@ if ($QualityPython) {
     if ($LASTEXITCODE -ne 0) { throw 'Updated preferences did not validate; the running app was left unchanged.' }
 }
 Write-Host 'Updating Notewll. Finish any active dictation before running this update.'
-$running = @(Get-Process LocalDictation -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $installed })
+$running = @(Get-Process Notewll,LocalDictation -ErrorAction SilentlyContinue | Where-Object { $_.Path -in @($installed, (Join-Path $destination 'LocalDictation.exe')) })
 if ($running.Count) {
     & $build --request-exit | Out-Null
     foreach ($appProcess in $running) { if (-not $appProcess.WaitForExit(8000)) { throw 'Close Notewll from its tray menu and try again. No application files were changed.' } }
