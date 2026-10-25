@@ -1,15 +1,16 @@
-# Notewll 0.10.0 — Speak naturally. Keep the words that matter.
+﻿# Notewll 0.10.0 — Speak naturally. Keep the words that matter.
 
-Local AI dictation, voice notes and meeting transcripts for Windows.
+Local dictation, voice notes and meeting transcripts for Windows.
 
-## The headline: cleaner words from natural speech
+## The headline: two text modes
 
-Repeated starts such as “what's the what's the” can now become “what's the” without a model. Optional local AI sentence cleanup extends this to supported sentence repairs, with validation to protect content, names, numbers and negation. Long passages retain every sentence; rejected rewrites fall back to the basic result.
+Choose Raw text to keep recognized words unchanged, or Modified text to remove fillers and repeated starts with basic formatting. Original text remains available for review.
 
 ## Everything new in this preview
 
-- General repeated-prefix and abandoned-start cleanup, straight/curly apostrophe matching and broader local-model sentence editing.
-- Background grammar warm-up and speculative editing; only the latest complete text can be applied. Final smart cleanup has a four-second additional wait cap.
+- Raw text and Modified text are the only text modes. Raw text bypasses cleanup and writing rules; Modified text applies basic cleanup.
+
+- General repeated-prefix and abandoned-start cleanup, straight/curly apostrophe matching and two text modes.
 - Find & act across conversations, optional local semantic retrieval with source playback, extractive highlights and reviewable action items.
 - Timestamped live bookmarks: Ctrl+Alt+1/2/3 for Important, Question and Follow up.
 - Projects, tags and person filters; clear correction-rule scopes and undo through rule removal.
@@ -26,11 +27,10 @@ Repeated starts such as “what's the what's the” can now become “what's the
 - **Notewll-Small-Update.zip**: compact update files and instructions for an existing installation. Not a full installer.
 - **SHA256SUMS-0.10.0.txt**: checksums for those assets.
 
-AI sentence cleanup uses separately installed local Ollama/llama3.2. Semantic search, accurate speech and voice matching use their separate optional setup paths. No cloud API key is needed for the Windows app.
 
 ## Evidence and preview limits
 
-The full regression-suite result for this publication is recorded in verification/PUBLICATION_0.10.0.md. Eight warmed local text-editing requests measured 144–511 ms in a small final diagnostic batch; that excludes microphone capture, ASR and desktop insertion. Physical microphone/keyboard acceptance, human-reference recognition accuracy, and semantic-model inference/resource checks remain separate. This is an unsigned Windows preview, not a promise of perfect correction or universal latency. Encrypted snapshots require the same Windows account/PC; use ZIP for migration.
+The text-mode update passed 164 automated checks, with 2 skipped checks and 2 excluded live microphone checks. Original text, saved settings and installer packaging were checked. Physical microphone capture and typing into target applications still require desktop acceptance. This is an unsigned Windows preview.
 
 [Product, demo and screenshots](https://myhai.org/projects/dotflow/) · [User guide](https://github.com/sudheer-050/notewll/blob/main/USER_GUIDE.md) · [Source](https://github.com/sudheer-050/notewll)
 
@@ -84,7 +84,6 @@ Focused checks cover all 171 appearance/gravity combinations, saved preferences,
 
 # Notewll 0.8.1 - local accuracy candidate
 
-Local review build; not published. Optional accurate dictation uses a persistent CPU Parakeet recognizer and Silero speech detection. Recognition starts while you speak. Shortcut formatting no longer waits for a separate grammar model. Accurate dictation and enhanced meeting notes have independent preferences; existing notes and originals are preserved.
 
 Measured controls: no text on 21 synthetic non-speech clips and two saved empty clips. Thirteen speech replays finished with median 248 ms release latency; 12 finished within one second and one took 2,077 ms. These are warm backend replay timings, not physical microphone-to-keyboard measurements. True word error rate remains unknown without human-verified references.
 
@@ -94,7 +93,6 @@ Measured controls: no text on 21 synthetic non-speech clips and two saved empty 
 
 - Recognition: optional accurate dictation replaces the small Vosk shortcut recognizer with local CPU Parakeet. It processes speech during recording and stays warm between uses.
 - Silence: neural speech detection suppresses recognition on non-speech. All 21 measured silence/noise controls returned no text, compared with four false raw outputs in the earlier recognizer controls.
-- Formatting: shortcut completion uses deterministic cleanup instead of waiting for Ollama. Legacy grammar cleanup rejects changes to names, numbers, negation and other recognized words.
 - Measured recognition comparison: disagreement with saved Wispr hypotheses decreased from 15 to 10 word edits over 51 baseline words. Wispr output is not ground truth, so this is not a verified accuracy score or proof of superiority.
 - Responsiveness: background recognition overlaps speaking; release timing includes outstanding work. Cancellation avoids waiting on the recognition lock.
 - Consistency: Practice, file checks and recovery use the selected dictation engine. Accurate dictation and enhanced meeting notes have independent settings.
@@ -109,17 +107,12 @@ The following notes describe the historical 0.8.0 release.
 
 # Notewll 0.8.0 - faster local dictation
 
-Windows x64, English speech, unsigned preview. Recognition and grammar stay on your computer.
 
 - Shortcut dictation now recognizes speech every 250 ms while you speak, including when live insertion is disabled or held modifier keys delay typing.
-- Optional enhanced grammar warms at startup and corrects partial sentences in the background. Matching corrections and unchanged whole-word prefixes are reused as speech grows.
-- Release finalizes the live recognizer instead of running a second full Whisper transcription. Grammar has a 600 ms wait budget; slow or unavailable grammar falls back to basic local formatting and filler removal. Late corrections never rewrite a completed dictation.
 - Silence, quick shortcut taps and empty recognition results return quietly to idle without warning popups, inserted text or clipboard changes.
-- Enhanced setup includes local contextual grammar, saved vocabulary hints for Whisper-based note/file/recovery paths, and meeting voice grouping. The standard installer does not install Python/Ollama or grammar models; enhanced grammar requires the optional setup documented in SPEECH_QUALITY_UPDATE.md.
 - Playground preview no longer clears a computed result when an empty optional result is supplied.
 - Existing notes, recordings, shortcuts and preferences are retained. Installer, application metadata and About now report 0.8.0.
 
-Measured latency: three six-second local voice recordings, replayed in real time, produced formatted text 509, 416 and 148 ms after simulated release. These are three warm replay measurements, not physical microphone-to-keyboard timings, p95 estimates, accuracy scores or a guarantee for every PC. Skipping the second Whisper pass can reduce recognition accuracy; fallback cleanup is not full model grammar editing.
 
 Verification: 91 application, installer, speech-worker and regression checks passed; four live microphone/keyboard checks were excluded. Direct empty-result/cancellation checks passed too. The full installer embeds the exact verified 0.8.0 application. A cleanup-preview failure found during packaging was fixed and both preview checks now pass. Real microphone capture returns MMSYSERR 1 in this managed session, and keyboard injection is unavailable. Physical shortcut timing, cross-app insertion and recognition accuracy still need desktop acceptance. The installer is unsigned and the certificate-verified automatic updater remains unconfigured; install this preview manually from GitHub Releases.
 

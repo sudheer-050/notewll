@@ -1,13 +1,7 @@
-﻿# Notewll 0.10.0 publication verification
+﻿# Notewll 0.10.0 text-mode update
 
-Published Windows preview candidate prepared October 24, 2026.
+The rebuilt application has only Raw text and Modified text. Both run locally without a sentence-editing model.
 
-- Current application suite: **164 passed, 2 skipped, 2 deselected**. The two excluded microphone tests require device access unavailable in the managed session. This is not microphone-to-editor acceptance.
-- The installer was rebuilt from the current source. Installer payload/hash and isolated offline speech loading checks passed in the suite.
-- Actual local Ollama/llama3.2 sentence-cleanup batch: eight warmed text-only requests measured **144-511 ms**, excluding microphone capture, ASR and desktop insertion. Both reported restart examples and basic grammar cases produced the intended text. The meaning validator rejected dropped words and changed protected facts. See SMART_SENTENCE_CLEANUP.md.
-- Added contracted-question repetition checks cover straight, curly and mixed apostrophes, comma-separated and triple repeats, while preserving surrounding words and intentional separate questions.
-- Roadmap integration checks cover tasks/bookmarks/filter persistence, original transcript preservation, source highlights, app allowlist, encrypted snapshot round-trip, tamper rejection, non-mutating restore preview and PDF scope/redaction.
-- Current screenshots use synthetic demonstration records. The launch SVG/animation is a labeled illustration, not recorded product footage or a speed demonstration.
-- Optional semantic-search inference/resource measurement and real hands-free/global-bookmark/microphone/keyboard acceptance remain pending. The installer is unsigned; no signed automatic update or perfect-recognition claim is made.
+Validation: 164 automated checks passed, 2 skipped and 2 live microphone checks excluded. Native Home/navigation checks and installer tests passed. Original transcript storage and settings migration were checked. These results do not establish real-room speech accuracy or physical desktop insertion acceptance.
 
-Release artifacts are distributed through GitHub Releases. Generated EXEs, recordings, credentials, settings, model caches and local diagnostic output are excluded from the source snapshot.
+The installer and compact update contain the same rebuilt application. SHA256SUMS-0.10.0.txt records release asset hashes. Source publication excludes binaries, recordings, model environments, local settings and evaluation output.

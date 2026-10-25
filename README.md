@@ -1,16 +1,16 @@
-<p align="center"><img src="assets/local-dictation.png" width="76" alt="Notewll logo"></p>
+﻿<p align="center"><img src="assets/local-dictation.png" width="76" alt="Notewll logo"></p>
 
-# Notewll — local AI dictation, voice notes and meeting transcripts for Windows
+# Notewll — local dictation, voice notes and meeting transcripts for Windows
 
 **Speak naturally. Keep the words that matter.**
 
-Turn speech into text, catch a thought, and return to the conversation. Notewll combines shortcut dictation, personal notes, timestamped meeting recordings and optional local AI sentence cleanup in a native Windows app.
+Turn speech into text, catch a thought, and return to the conversation. Notewll combines shortcut dictation, personal notes, timestamped meeting recordings and raw or modified text in a native Windows app.
 
 ![Notewll 0.10.0: speak naturally and keep the words that matter](assets/showcase/0.10.0/launch-card.svg)
 
 [**Download Windows preview**](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Setup-0.10.0.exe) · [Small update for existing installs](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Small-Update.zip) · [Product and demo](https://myhai.org/projects/dotflow/) · [Portfolio case study](https://sudheerkumargandiboyana.com/projects/dotflow/) · [User guide](USER_GUIDE.md)
 
-**Windows 10/11 x64 · English · 0.10.0 unsigned preview.** The installer includes the standard offline speech engine. AI cleanup, semantic search and voice matching use optional, separately installed local models.
+**Windows 10/11 x64 · English · 0.10.0 unsigned preview.** The installer includes the standard offline speech engine. Semantic search and voice matching use optional, separately installed local models.
 
 ## New: speak through a restart
 
@@ -20,14 +20,16 @@ Natural speech contains restarts. Your written sentence does not need to keep ev
 |---|---|
 | “What's the what's the best restaurant near me?” | “What's the best restaurant near me?” |
 | “Can you list what are what updates you have done?” | “Can you list what updates you have done?” |
-| “I has a meeting tomorrow.” | “I have a meeting tomorrow.” |
 | “I just wanted to talk to you about what are what what about the king?” | “I just wanted to talk to you about the king.” |
 
-Basic cleanup detects repeated grammatical phrases, including contracted question words and mixed apostrophe styles, without a language model. **Smart sentence cleanup** uses a locally installed Ollama `llama3.2` model for broader supported sentence repairs. A validator checks proposed edits against the recognized words, protecting substantive words, names, numbers, negation and prepositions. Ambiguous or unsupported rewrites keep the basic result. Code mode and cleanup-off preserve literal wording.
+Choose **Preferences > Writing > Text mode**:
+
+- **Raw text:** keep recognized text unchanged, including fillers and repeats. Dictionary replacements and writing-style formatting are bypassed.
+- **Modified text:** remove fillers and repeated starts, then apply basic punctuation, capitalization and your selected writing preferences.
+
+Original recognized text and the modified result remain available for review. Neither mode needs a sentence-editing model.
 
 ![Illustration of a repeated question becoming a clearer sentence; not recorded app footage](assets/showcase/0.10.0/cleanup-animation.svg)
-
-Eight warmed text-only local-model checks measured **144–511 ms per request**. These are a small diagnostic batch, not microphone-to-editor latency, recognition accuracy, or a guarantee for every sentence. The final smart-cleanup wait is capped at four additional seconds; cold startup and optional model setup are separate. [Measured evidence and limits](verification/SMART_SENTENCE_CLEANUP.md).
 
 ## One workspace, three ways to capture
 
@@ -58,14 +60,14 @@ Semantic retrieval's installation/inference and physical global-shortcut recordi
 | Optional features | Inspect separate storage/download/RAM information when measured; install/remove managed semantic-search and voice-matching runtimes while keeping notes. Unknown measurements stay labeled unknown. |
 | Your voice, your orbit | Keep the physics-driven floating ball, sports/planet skins, gravity presets, colors/gradients, separate ball/menu sizes, and rotating local images. |
 
-![Writing preferences with smart sentence cleanup](assets/showcase/0.10.0/smart-cleanup-settings.png)
+![Writing preferences with Raw text and Modified text](assets/showcase/0.10.0/text-modes.png)
 
 ## Install or update
 
 1. Download [Notewll-Setup-0.10.0.exe](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Setup-0.10.0.exe) and the [checksums](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/SHA256SUMS-0.10.0.txt).
 2. Finish active recordings, open the installer, choose Install, then Open app. Existing notes and preferences are preserved.
 3. Check the microphone in Practice, then test your shortcut in your chosen editor.
-4. For AI sentence editing, install Ollama and its `llama3.2` model separately, then enable **Preferences ? Writing ? Smart sentence cleanup** and use **Check local sentence cleanup**. No model is downloaded during dictation.
+4. Choose Raw text or Modified text in **Preferences > Writing > Text mode**, then save your preferences.
 5. Optional semantic search and voice matching have their own setup paths. The [small update ZIP](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Small-Update.zip) is for existing installations and includes a READ ME; it is not a first-time installer.
 
 Requirements: Windows 10/11 x64, .NET Framework 4.8 and device permission for the selected audio sources. Standard installation and speech do not need Python, Docker, a cloud API key or an account. Additional models/runtimes can require downloads. The preview installer is unsigned; signed automatic updates are not configured.

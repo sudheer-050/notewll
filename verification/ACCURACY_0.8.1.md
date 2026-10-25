@@ -1,8 +1,7 @@
-# Notewll 0.8.1 local accuracy verification
+﻿# Notewll 0.8.1 local accuracy verification
 
 ## Implementation
 
-Persistent CPU Parakeet TDT recognition runs during recording. Silero neural speech detection rejects non-speech before recognition. No separate grammar service delays shortcut completion. Formatting preserves recognized words. Explicit legacy grammar refinement rejects lexical replacements except literal fillers. Accurate dictation is independent of enhanced meeting notes. Practice, file checks and recovery use the selected dictation engine. Originals and existing notes are preserved.
 
 ## Measured results
 

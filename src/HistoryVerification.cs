@@ -12,6 +12,13 @@ namespace LocalDictation
         static void Snapshot(Form form, string path) { Application.DoEvents(); using (var image = new Bitmap(form.Width, form.Height)) { form.DrawToBitmap(image, new Rectangle(Point.Empty, form.Size)); image.Save(path); } }
         public static void Run(string root)
         {
+            var today = DateTime.Today;
+            var examples = Enumerable.Range(0, 3).Select(i => new NoteDocument { Kind = "Dictation", Status = "Complete", CreatedUtc = today.AddDays(-i).ToUniversalTime().ToString("o") }).ToList();
+            foreach (var example in examples) example.Segments.Add(new NoteSegment { Complete = true, RawText = "hello world", Text = "Hello world." });
+            examples[0].Segments[0].Text = "Hello everyone.";
+            var progress = SpeakingProgress.From(examples, today);
+            if (progress.Sessions != 3 || progress.Changed != 1 || progress.Streak != 3 || progress.Level != 2 || progress.Next != 7) throw new Exception("Speaking progress calculation failed");
+            if (SpeakingProgress.From(examples, today.AddDays(1)).Streak != 3 || SpeakingProgress.From(examples, today.AddDays(2)).Streak != 0 || SpeakingProgress.From(new NoteDocument[0], today).Level != 1) throw new Exception("Speaking streak boundary failed");
             Directory.CreateDirectory(root); Config.DiagnosticDataRoot(Path.Combine(root, "settings"));
             var store = new NoteStore(Path.Combine(root, "notes"));
             ActivityHistory.Record(store, "Draft the release notes", "Draft the release notes.", "chrome", DateTime.UtcNow.AddMinutes(-20), "Planning draft - Google Chrome");
@@ -23,7 +30,25 @@ namespace LocalDictation
             using (var hub = new SettingsForm(new Config(), "", "", store))
             {
                 hub.Show(); Application.DoEvents(); var pages = (Panel[])Field(hub, "pages"); var home = pages[0];
-                if (home.Controls.OfType<Surface>().Count() != 3 || home.Controls.OfType<Surface>().SelectMany(card => card.Controls.OfType<Label>()).Any(label => label.Text == "Your history")) throw new Exception("Home still contains history");
+                var modes = (ComboBox)Field(hub, "correctionMode");
+                var testRaw = (TextBox)Field(hub, "raw"); var testCleaned = (TextBox)Field(hub, "cleaned");
+                modes.SelectedIndex = 0; hub.UpdateTranscript("um I I has a meeting", "");
+                if (testCleaned.Text != "um I I has a meeting") throw new Exception("Verbatim mode selector changed words");
+                modes.SelectedIndex = 1;
+                if (testCleaned.Text != "I has a meeting.") throw new Exception("Filler mode selector rewrote grammar");
+                Config modeSaved = null; hub.OnSaved = c => modeSaved = c; hub.SavePreferences();
+                if (modeSaved == null || !modeSaved.CleanupEnabled || modeSaved.SmartCleanupEnabled) throw new Exception("Correction mode did not persist");
+                if (modes.Items.Count != 2 || (string)modes.Items[0] != "Raw text" || (string)modes.Items[1] != "Modified text") throw new Exception("Unexpected text mode");
+                modes.SelectedIndex = 0; hub.SavePreferences();
+                if (modeSaved.CleanupEnabled || modeSaved.SmartCleanupEnabled) throw new Exception("Raw text mode did not persist");
+                modes.SelectedIndex = 1; hub.SavePreferences();
+                hub.UpdateTranscript("", ""); hub.ShowPage("Preferences"); hub.SelectSettingsCategory("Writing"); Application.DoEvents();
+                Snapshot(hub, Path.Combine(root, "correction-modes.png")); hub.ShowPage("Home");
+                var progressCard = ((Label)Field(hub, "speakingMetrics")).Parent;
+                home.ScrollControlIntoView(progressCard); Application.DoEvents(); Snapshot(hub, Path.Combine(root, "speaking-progress.png"));
+                hub.Size = hub.MinimumSize; Application.DoEvents(); home.ScrollControlIntoView(progressCard); Application.DoEvents(); Snapshot(hub, Path.Combine(root, "speaking-progress-compact.png"));
+                home.AutoScrollPosition = Point.Empty;
+                if (home.Controls.OfType<Surface>().Count() != 4 || home.Controls.OfType<Surface>().SelectMany(card => card.Controls.OfType<Label>()).Any(label => label.Text == "Your history")) throw new Exception("Home still contains history");
                 var metrics = (VoiceKpis)Field(hub, "voiceKpis"); if (metrics.Right > metrics.Parent.ClientSize.Width || metrics.Bottom > metrics.Parent.ClientSize.Height) throw new Exception("KPI layout clipped after first show"); if (metrics.Words != 4 || metrics.Sentences != 1) throw new Exception("Home KPIs changed");
                 var welcome = (Label)Field(hub, "homeWelcome");
                 if (!welcome.Text.StartsWith("You've saved about ") || VoiceKpis.WelcomeHeadline(600, 40) != "You've saved about 11 minutes." || VoiceKpis.WelcomeHeadline(0, 40).Contains("saved") || VoiceKpis.WelcomeHeadline(600, 200).Contains("saved")) throw new Exception("Welcome savings message is missing or misleading");

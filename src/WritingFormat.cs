@@ -7,7 +7,8 @@ namespace LocalDictation
     {
         public static string Compose(Config config, string raw)
         {
-            if (!config.CleanupEnabled || config.WritingStyle == "Code") return PersonalRule.Apply(config, (raw ?? "").Trim());
+            if (!config.CleanupEnabled) return raw ?? "";
+            if (config.WritingStyle == "Code") return PersonalRule.Apply(config, (raw ?? "").Trim());
             string text = PersonalRule.Apply(config, TextCleanup.Clean(raw));
             text = Regex.Replace(text, @"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", m => Char.ToUpperInvariant(m.Value[0]) + m.Value.Substring(1).ToLowerInvariant(), RegexOptions.IgnoreCase);
             text = Regex.Replace(text, @"\bi\b", "I");

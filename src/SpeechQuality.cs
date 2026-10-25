@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -46,7 +46,7 @@ namespace LocalDictation
             }
         }
         public static QualityResult Recognize(Config config, byte[] pcm, bool voices) { return Call(config, new { pcm = Convert.ToBase64String(pcm), voices = voices, vocabulary = PersonalRule.Vocabulary(config) }); }
-        public static string Refine(Config config, string text) { return !config.CleanupEnabled || config.WritingStyle == "Code" || !Available(config) ? text : Call(config, new { op = "refine", text = PersonalRule.Apply(config, text, true) }).text; }
+        public static string Refine(Config config, string text) { return SmartCleanup.Complete(config, text, 0); }
         public static string TryRefine(Config config, string text)
         {
             // Do not queue old partial sentences behind meeting transcription or another dictation.

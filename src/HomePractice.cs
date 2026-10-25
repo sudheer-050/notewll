@@ -13,7 +13,7 @@ namespace LocalDictation
         bool practiceExpanded;
         void BuildHomePractice()
         {
-            homePractice = Card(pages[0], 616, 76); homePractice.AccessibleName = "Try dictation on Home";
+            homePractice = Card(pages[0], 880, 76); homePractice.AccessibleName = "Try dictation on Home";
             practiceHeading = Label(homePractice, "Try dictation", 22, 12, 460, 28, 12, true, Ink);
             practiceHint = Label(homePractice, "A quick check of your microphone and recognized text.", 22, 44, 700, 22, 9, false, Muted);
             practiceToggle = Button(homePractice, "Try it", 578, 14, 156, (s, e) => SetHomePractice(!practiceExpanded, !practiceExpanded)); practiceToggle.AccessibleName = "Expand or collapse dictation practice";
@@ -21,11 +21,11 @@ namespace LocalDictation
             transcribe.SetBounds(22, 136, 180, 38); homePractice.Controls.Add(transcribe);
             Button(homePractice, "Cancel test", 218, 136, 120, (s, e) => { StopTest(); sttStatus.Text = "Test canceled. No audio was saved."; });
             Button(homePractice, "Test audio file...", 354, 136, 170, (s, e) => TestAudioFile());
-            rawHeading = Label(homePractice, "YOUR SPEECH", 24, 200, 325, 24, 8, true, Muted);
-            cleanedHeading = Label(homePractice, "CLEANED RESULT", 388, 200, 325, 24, 8, true, Muted);
-            raw.SetBounds(24, 240, 325, 170); cleaned.SetBounds(388, 240, 325, 170); raw.AccessibleName = "Your speech"; cleaned.AccessibleName = "Cleaned result"; homePractice.Controls.AddRange(new Control[] { raw, cleaned });
+            rawHeading = Label(homePractice, "RAW TEXT", 24, 200, 325, 24, 8, true, Muted);
+            cleanedHeading = Label(homePractice, "MODIFIED TEXT", 388, 200, 325, 24, 8, true, Muted);
+            raw.SetBounds(24, 240, 325, 170); cleaned.SetBounds(388, 240, 325, 170); raw.AccessibleName = "Raw text"; cleaned.AccessibleName = "Modified text"; homePractice.Controls.AddRange(new Control[] { raw, cleaned });
             copy.SetBounds(22, 434, 112, 38); homePractice.Controls.Add(copy);
-            Button(homePractice, "Clear", 150, 434, 90, (s, e) => UpdateTranscript("", "")); Button(homePractice, "Remember a correction", 260, 434, 240, (s, e) => RememberCorrection());
+            Button(homePractice, "Apply cleanup", 520, 434, 210, (s, e) => ApplyPracticeCorrection()); Button(homePractice, "Clear", 150, 434, 90, (s, e) => UpdateTranscript("", "")); Button(homePractice, "Remember a correction", 260, 434, 240, (s, e) => RememberCorrection());
             sttStatus.SetBounds(22, 486, 710, 52); sttStatus.Text = "Ready for a quick test. Practice is not added to your history."; homePractice.Controls.Add(sttStatus);
             foreach (Control control in homePractice.Controls) control.Tag = control.Bounds;
             practiceBody = homePractice.Controls.Cast<Control>().Where(control => control != practiceHeading && control != practiceHint && control != practiceToggle).ToArray();
@@ -38,7 +38,7 @@ namespace LocalDictation
             practiceExpanded = expanded; practiceToggle.Text = expanded ? "Hide test" : "Try it";
             practiceToggle.AccessibleDescription = expanded ? "Expanded" : "Collapsed";
             foreach (var control in practiceBody) control.Visible = expanded;
-            homePractice.Tag = new Rectangle(40, 616, 760, expanded ? 560 : 76);
+            homePractice.Tag = new Rectangle(40, 880, 760, expanded ? 560 : 76);
             LayoutPage(pages[0]);
             if (expanded && scrollTo) pages[0].ScrollControlIntoView(homePractice);
             homePractice.Invalidate(true);

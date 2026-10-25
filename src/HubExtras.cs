@@ -50,7 +50,7 @@ namespace LocalDictation
         {
             updateUrl.TextChanged += (s, e) => MarkDirty(); updatePublisher.TextChanged += (s, e) => MarkDirty();
             updateOnStart.CheckedChanged += (s, e) => MarkDirty(); writingStyle.SelectedIndexChanged += (s, e) => { MarkDirty(); RefreshCleaned(); };
-            foreach (var box in new[] { quality, accurateMode, cleanup, smartCleanup, autoPaste, liveWriting, startup, toolbarChoice, indicatorChoice, motionChoice, noiseChoice }) box.CheckedChanged += (s, e) => MarkDirty();
+            foreach (var box in new[] { quality, accurateMode, cleanup, autoPaste, liveWriting, startup, toolbarChoice, indicatorChoice, motionChoice, noiseChoice }) box.CheckedChanged += (s, e) => MarkDirty();
             foreach (var box in new[] { mic, noteShortcut, noteSource, meetingSource, pasteMethod }) box.SelectedIndexChanged += (s, e) => MarkDirty();
         }
         bool ConfirmUnsaved()
@@ -60,7 +60,7 @@ namespace LocalDictation
             if (result == DialogResult.Cancel) return false;
             if (result == DialogResult.Yes) { SavePreferences(); return !dirty; }
             selectedShortcut = source.Hotkey; hotkey.Text = selectedShortcut;
-            smartCleanup.Checked = source.SmartCleanupEnabled; quality.Checked = source.QualityEnabled; accurateMode.Checked = source.AccurateDictationEnabled; cleanup.Checked = source.CleanupEnabled; autoPaste.Checked = source.AutoPaste; liveWriting.Checked = source.LiveWriting; startup.Checked = source.StartWithWindows;
+            correctionMode.SelectedIndex = source.CleanupEnabled ? 1 : 0; quality.Checked = source.QualityEnabled; accurateMode.Checked = source.AccurateDictationEnabled; cleanup.Checked = source.CleanupEnabled; autoPaste.Checked = source.AutoPaste; liveWriting.Checked = source.LiveWriting; startup.Checked = source.StartWithWindows;
             toolbarChoice.Checked = source.ShowToolbar; indicatorChoice.Checked = source.ShowVoiceIndicator; motionChoice.Checked = source.ReducedMotion; noiseChoice.Checked = source.ReduceNoise; writingStyle.SelectedItem = source.WritingStyle;
             noteShortcut.SelectedItem = source.NotesHotkey; noteSource.SelectedIndex = Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, source.NotesSource); meetingSource.SelectedIndex = Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, source.MeetingSource);
             mic.SelectedIndex = Math.Max(0, mic.Items.IndexOf(source.Microphone)); pasteMethod.SelectedIndex = Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, source.PasteMethod);
@@ -95,12 +95,10 @@ namespace LocalDictation
             Button(recording, "Repair speech installation", 20, 394, 260, (s, e) => { var setup = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Uninstall.exe"); if (File.Exists(setup)) System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = setup, UseShellExecute = true }); else MessageBox.Show(this, "Run the latest Setup executable to repair the speech files."); });
             pendingRules = source.Copy().Personalization;
             var writing = SettingsTab("Writing");
-            Setting(writing, cleanup, 22); Setting(writing, autoPaste, 66); Setting(writing, liveWriting, 110); Setting(writing, accurateMode, 144); Setting(writing, quality, 182); Setting(writing, smartCleanup, 216);
-            Label(writing, "Paste method", 20, 260, 600, 26, 11, true, Ink); Setting(writing, pasteMethod, 292);
-            Label(writing, "Writing style", 20, 332, 600, 26, 11, true, Ink); writingStyle.Items.AddRange(new object[] { "Standard", "Chat", "Email", "Code" }); writingStyle.SelectedItem = source.WritingStyle; Setting(writing, writingStyle, 364); Button(writing, "Words & snippets", 20, 410, 248, (s, e) => EditRules());
-            Label(writing, "Accurate mode needs the optional local setup. Wait for Ready before dictating.\nBasic cleanup removes fillers and repeated starts. Smart cleanup uses local llama3.2.\nThe original text is kept if the model is unavailable, slow or changes protected words.", 20, 458, 620, 90, 10, false, Muted);
-            var cleanupStatus = Label(writing, SmartCleanup.Status, 20, 598, 620, 80, 9, false, Muted);
-            Button(writing, "Check local sentence cleanup", 20, 554, 300, async (s, e) => { var button = (Control)s; button.Enabled = false; cleanupStatus.Text = "Checking the local grammar service..."; try { await System.Threading.Tasks.Task.Run(() => SmartCleanup.Warm()); if (!IsDisposed) cleanupStatus.Text = SmartCleanup.Status; } finally { if (!button.IsDisposed) button.Enabled = true; } });
+            BuildCorrectionModes(writing); Setting(writing, autoPaste, 152); Setting(writing, liveWriting, 188); Setting(writing, accurateMode, 224); Setting(writing, quality, 260);
+            Label(writing, "Paste method", 20, 300, 600, 26, 11, true, Ink); Setting(writing, pasteMethod, 330);
+            Label(writing, "Writing style", 20, 370, 600, 26, 11, true, Ink); writingStyle.Items.AddRange(new object[] { "Standard", "Chat", "Email", "Code" }); writingStyle.SelectedItem = source.WritingStyle; Setting(writing, writingStyle, 400); Button(writing, "Words & snippets", 20, 446, 248, (s, e) => EditRules());
+            Label(writing, "Accurate mode needs the optional local setup. Wait for Ready before dictating.\nChoose Raw text to keep recognized words, or Modified text for basic cleanup.\nBoth modes run on your device without a sentence-editing model.", 20, 492, 620, 90, 10, false, Muted);
             var noteSettings = SettingsTab("Notes");
             Label(noteSettings, "Recording shortcut - select one", 20, 20, 620, 28, 11, true, Ink); Setting(noteSettings, noteShortcut, 58);
             Label(noteSettings, "Personal-note audio", 20, 120, 620, 28, 11, true, Ink); Setting(noteSettings, noteSource, 158);

@@ -139,7 +139,6 @@ namespace LocalDictation
         readonly Label micStatus = new Label(), sttStatus = new Label(), saved = new Label(), homeLatest = new Label(), homeShortcut = new Label(), homeMicrophone = new Label();
         readonly CheckBox quality = new CheckBox { Text = "Enhanced local notes and meeting voices", AutoSize = true };
         readonly CheckBox accurateMode = new CheckBox { Text = "Accurate local dictation and speech detection", AutoSize = true };
-        readonly CheckBox smartCleanup = new CheckBox { Text = "Smart sentence cleanup with local Ollama", AutoSize = true };
         readonly CheckBox cleanup = new CheckBox { Text = "Clean up filler words and spoken corrections", AutoSize = true };
         readonly CheckBox autoPaste = new CheckBox { Text = "Insert text into the app I was using", AutoSize = true };
         readonly CheckBox liveWriting = new CheckBox { Text = "Write live, then refine when I release the shortcut", AutoSize = true };
@@ -187,7 +186,7 @@ namespace LocalDictation
             Deactivate += (s, e) => { if (IsCapturingShortcut) EndShortcutCapture(); };
             mic.Items.Add("Windows default microphone"); foreach (var name in Mics.List()) mic.Items.Add(name);
             int selected = mic.Items.IndexOf(config.Microphone); mic.SelectedIndex = selected > 0 ? selected : 0;
-            smartCleanup.Checked = config.SmartCleanupEnabled; liveWriting.Checked = config.LiveWriting; pasteMethod.Items.AddRange(new object[] { "Automatic (includes terminals)", "Ctrl+V", "Ctrl+Shift+V", "Shift+Insert" }); pasteMethod.SelectedIndex = Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, config.PasteMethod);
+            liveWriting.Checked = config.LiveWriting; pasteMethod.Items.AddRange(new object[] { "Automatic (includes terminals)", "Ctrl+V", "Ctrl+Shift+V", "Shift+Insert" }); pasteMethod.SelectedIndex = Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, config.PasteMethod);
             quality.Checked = config.QualityEnabled; accurateMode.Checked = config.AccurateDictationEnabled; cleanup.Checked = config.CleanupEnabled; autoPaste.Checked = config.AutoPaste; startup.Checked = config.StartWithWindows;
             noteShortcut.Items.AddRange(new object[] { "Ctrl+Shift+N", "Ctrl+Shift+Space", "Ctrl+Alt+N", "F9", "F10", "F11", "F12" });
             if (!noteShortcut.Items.Contains(config.NotesHotkey)) noteShortcut.Items.Add(config.NotesHotkey); noteShortcut.SelectedItem = config.NotesHotkey;
@@ -255,7 +254,7 @@ namespace LocalDictation
             Button(actions, "New note", 204, 50, 166, (s, e) => { ShowPage("Notes"); notes.NewWrittenNote(); });
             Button(actions, "Record meeting", 386, 50, 180, (s, e) => { ShowPage("Notes"); notes.Toggle(source.MeetingSource, "Meeting"); });
             readinessStatus = Label(p, "Speech engine: checking availability...", 42, 232, 720, 24, 9, false, Muted);
-            BuildActivityHome(p);
+            BuildActivityHome(p); BuildSpeakingProgress(p);
             string detail; SetReadiness(SpeechEngine.Healthy(source, out detail) ? "Ready - English speech stays on this device." : detail);
         }
         void BuildPlayground() { BuildHomePractice(); }
@@ -335,7 +334,7 @@ namespace LocalDictation
             if (homeLatest.Parent != null) homeLatest.Parent.Visible = true;
             homeLatest.Text = String.IsNullOrWhiteSpace(cleaned.Text) ? "Recent notes open with a double-click. Dictation audio is not stored." : cleaned.Text;
         }
-        void RefreshCleaned() { var draft = source.Copy(); draft.CleanupEnabled = cleanup.Checked; draft.WritingStyle = writingStyle.SelectedItem == null ? source.WritingStyle : writingStyle.Text; draft.Personalization = pendingRules ?? source.Personalization; cleaned.Text = WritingFormat.Compose(draft, raw.Text); copy.Enabled = cleaned.Text.Length > 0; copy.Text = "Copy text"; }
+        void RefreshCleaned() { var draft = PracticeConfig(); cleaned.Text = WritingFormat.Compose(draft, raw.Text); copy.Enabled = cleaned.Text.Length > 0; copy.Text = "Copy text"; }
         void RefreshHome() { RefreshActivity(); homeShortcut.Text = "Hold " + source.Hotkey.Replace("+", " + ") + " to dictate"; homeShortcut.Font = new Font("Segoe UI", 10, FontStyle.Italic); homeMicrophone.Text = source.Microphone == Config.DefaultMic ? "Windows default microphone" : source.Microphone; }
         public void SavePreferences()
         {
@@ -344,7 +343,7 @@ namespace LocalDictation
                 if (IsCapturingShortcut) throw new InvalidOperationException("Release your shortcut keys first.");
                 Result = source.Copy(); Result.Hotkey = selectedShortcut; Result.NotesHotkey = Convert.ToString(noteShortcut.SelectedItem);
                 Result.NotesSource = new[] { "Microphone", "Computer", "Both" }[noteSource.SelectedIndex]; Result.MeetingSource = new[] { "Microphone", "Computer", "Both" }[meetingSource.SelectedIndex];
-                Result.QualityEnabled = quality.Checked; Result.AccurateDictationEnabled = accurateMode.Checked; Result.Microphone = SelectedMic(); Result.SmartCleanupEnabled = smartCleanup.Checked; Result.CleanupEnabled = cleanup.Checked; Result.AutoPaste = autoPaste.Checked; Result.LiveWriting = liveWriting.Checked;
+                Result.QualityEnabled = quality.Checked; Result.AccurateDictationEnabled = accurateMode.Checked; Result.Microphone = SelectedMic(); Result.SmartCleanupEnabled = false; Result.CleanupEnabled = cleanup.Checked; Result.AutoPaste = autoPaste.Checked; Result.LiveWriting = liveWriting.Checked;
                 Result.PasteMethod = new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }[pasteMethod.SelectedIndex]; Result.StartWithWindows = startup.Checked;
                 Result.UpdateManifestUrl = updateUrl.Text.Trim(); Result.UpdatePublisherThumbprint = updatePublisher.Text.Replace(" ", "").Trim();
                 Result.CheckUpdatesOnStart = updateOnStart.Checked; Result.WritingStyle = writingStyle.Text;
@@ -387,13 +386,13 @@ namespace LocalDictation
             source.SetupMicrophoneVerified = peak >= 150; micStatus.Text = peak < 150 ? "No sound detected. Choose another microphone or check permission." : "Microphone activity detected.";
             if (peak < 150) { sttStatus.Text = "No sound captured from " + device + ". Choose your microphone in Preferences."; Array.Clear(pcm, 0, pcm.Length); return; }
             if (!recognize) { if (CloseToTray) try { source.Save(); } catch (Exception ex) { micStatus.Text = "Input detected; setup status could not be saved: " + ex.Message; } Array.Clear(pcm, 0, pcm.Length); return; }
-            transcribing = true; int gen = practiceGeneration; testMic.Enabled = transcribe.Enabled = false; sttStatus.Text = "Recognizing your sentence locally..."; var cfg = source.Copy(); cfg.Microphone = SelectedMic();
+            transcribing = true; int gen = practiceGeneration; testMic.Enabled = transcribe.Enabled = false; sttStatus.Text = "Recognizing your sentence locally..."; var cfg = PracticeConfig(); cfg.Microphone = SelectedMic();
             ThreadPool.QueueUserWorkItem(_ =>
             {
-                string text = null, error = null; try { text = DictationSpeech.Transcribe(cfg, pcm); } catch (Exception ex) { error = ex.Message; } finally { Array.Clear(pcm, 0, pcm.Length); }
+                string text = null, corrected = null, error = null; try { text = DictationSpeech.Transcribe(cfg, pcm); corrected = SmartCleanup.Complete(cfg, text, 8500); } catch (Exception ex) { error = ex.Message; } finally { Array.Clear(pcm, 0, pcm.Length); }
                 Post(() => { if (gen != practiceGeneration) return; transcribing = false; testMic.Enabled = transcribe.Enabled = true; transcribe.Text = "Record a sentence";
-                    if (error != null) { sttStatus.Text = error; return; } UpdateTranscript(text, ""); source.SetupSpeechVerified = !String.IsNullOrWhiteSpace(text); if (CloseToTray) try { source.Save(); } catch (Exception ex) { sttStatus.Text = "Practice succeeded, but setup status could not be saved: " + ex.Message; return; }
-                    sttStatus.Text = source.SetupSpeechVerified ? "Sentence recognized. Now try your shortcut in another app, then confirm the result in Check setup." : "No words recognized. Try a clear sentence.";
+                    if (error != null) { sttStatus.Text = error; return; } UpdateTranscript(text, corrected); source.SetupSpeechVerified = !String.IsNullOrWhiteSpace(text); if (CloseToTray) try { source.Save(); } catch (Exception ex) { sttStatus.Text = "Practice succeeded, but setup status could not be saved: " + ex.Message; return; }
+                    sttStatus.Text = source.SetupSpeechVerified ? (SmartCleanup.Enabled(cfg) ? SmartCleanup.Status : "Sentence recognized using the selected correction mode. Compare both versions below.") : "No words recognized. Try a clear sentence.";
                 });
             });
         }

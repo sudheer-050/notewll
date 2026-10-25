@@ -93,7 +93,7 @@ namespace LocalDictation
                 homeWelcome.Text = VoiceKpis.WelcomeHeadline(voiceKpis.Words, voiceKpis.TypingWpm);
                 homeWelcomeDetail.Text = voiceKpis.Words == 0 ? "Dictate into your apps and see how much time your voice gives back." : VoiceKpis.SavedMinutes(voiceKpis.Words, voiceKpis.TypingWpm) > 0 ? "Welcome back. Estimated from saved dictations at " + voiceKpis.TypingWpm + " WPM typing and 150 WPM speaking." : "You've dictated " + dictatedWords.ToString("N0") + " words. Your selected typing speed gives no estimated time saving.";
             }
-            voiceKpis.Invalidate();
+            RefreshSpeakingProgress(); voiceKpis.Invalidate();
         }
         void DeleteActivity(IEnumerable<NoteDocument> entries, bool confirmed = false)
         {

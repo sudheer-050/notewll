@@ -18,7 +18,7 @@ Avoid moving the cursor or typing during capture. If insertion is interrupted, R
 
 Dictation types directly into the focused text field without inspecting its contents or automatically retrying by paste. Click inside the message field before starting; release shortcut modifiers before text is inserted. With live writing disabled, the finished transcript is typed on release.
 
-Accurate local dictation is an optional preference under Writing. Run `scripts/setup_accuracy.ps1` once if its local environment/model is missing, and wait for Ready before recording. This mode uses local Parakeet speech recognition and Silero speech detection, with no separate grammar-service wait. Practice, file tests and recovery use the same chosen dictation engine. Cleanup handles punctuation/casing and fillers; it does not infer missing words or rewrite facts. Switch off accurate dictation for the basic small-model mode. Existing enhanced-speech preferences migrate to accurate dictation, while the enhanced meeting preference remains independent.
+Accurate local dictation is an optional preference under Writing. Run `scripts/setup_accuracy.ps1` once if its local environment/model is missing, and wait for Ready before recording. This mode uses local Parakeet speech recognition and Silero speech detection. Practice, file tests and recovery use the same chosen dictation engine. Cleanup handles punctuation/casing and fillers; it does not infer missing words or rewrite facts. Switch off accurate dictation for the basic small-model mode. Existing enhanced-speech preferences migrate to accurate dictation, while the enhanced meeting preference remains independent.
 
 The local model warms before accurate recording is enabled. Readiness is shown in the app and toolbar status, and cancel does not block behind an in-flight inference. Silence and rejected noise end without a warning or clipboard change. Speech detection can still miss quiet/short speech or accept some real-world noise; the finite synthetic controls do not establish perfect detection. One longer test replay took about two seconds after release, so a one-second response is not guaranteed.
 
@@ -127,12 +127,11 @@ Notewll runs. Encrypted snapshots require this Windows account on this PC. Use Z
 for migration. Restore previews titles, sizes and skipped existing notes before
 import. Scheduled snapshots skip active recordings and remain until removed.
 
-### Smart sentence cleanup
+### Raw text and Modified text
 
-Enable **Preferences > Writing > Smart sentence cleanup with local Ollama** for
-broader local sentence correction. It uses the optional installed `llama3.2` model,
-works while you speak, and can wait up to four additional seconds at release.
-Use **Check local sentence cleanup** to check/warm it. If it is unavailable, slow,
-or proposes unsupported word changes, basic cleanup is kept. The original recognized
-text stays available in history/review. Turn cleanup off or use Code mode for literal
-wording. No system can guarantee perfect interpretation of ambiguous speech.
+Choose **Preferences > Writing > Text mode** and save your preferences.
+
+- **Raw text** keeps the recognizer output unchanged, including fillers and repeats. It bypasses dictionary replacements and writing-style formatting.
+- **Modified text** removes fillers and repeated starts and applies basic formatting and your selected writing preferences.
+
+Compare RAW TEXT and MODIFIED TEXT in the Home microphone test. The recognizer may still mishear words or supply punctuation. Both modes run locally without a sentence-editing model.

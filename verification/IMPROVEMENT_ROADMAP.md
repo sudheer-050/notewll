@@ -1,4 +1,4 @@
-# Roadmap implementation verification - October 24, 2026
+﻿# Roadmap implementation verification - October 24, 2026
 
 This report describes the source/build changes. The installed app has not been replaced.
 
@@ -49,7 +49,8 @@ The full installer and small-update ZIP have been rebuilt; installation is still
 ### Broader local sentence cleanup
 
 The phrase-specific restart fixes have been replaced by a generalized basic
-restart pass plus optional guarded local-model sentence editing. See
 [smart cleanup verification](SMART_SENTENCE_CLEANUP.md) for actual model results,
 timing boundaries and the latest 153-test suite result. Installer rebuilt;
 installed-app replacement and physical desktop acceptance remain separate.
+
+Text output uses Raw text or Modified text. See SMART_SENTENCE_CLEANUP.md for current text-mode verification.

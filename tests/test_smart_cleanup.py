@@ -1,10 +1,10 @@
 from test_app import run
 
 
-def test_smart_cleanup_rewrites_only_supported_repairs_and_bounds_release():
+def test_raw_and_modified_modes_preserve_words_and_ignore_retired_setting():
     result = run('--smart-cleanup-smoke')
     assert result.returncode == 0, result.stderr
-    assert result.stdout == 'smart-cleanup-ok|general-restarts|grammar|protected-facts|bounded-release|no-stale-edit|verbatim'
+    assert result.stdout == 'text-modes-ok|raw-unchanged|modified-cleanup|protected-facts|legacy-setting-ignored'
 
 
 def test_general_repeated_prefix_cleanup_works_without_a_model():

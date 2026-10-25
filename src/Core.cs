@@ -97,7 +97,7 @@ namespace LocalDictation
             HandsFreeApps = ""; QualityPython = ""; HandsFreePython = ""; QualityEnabled = false;
             NotesSort = "Newest"; ExportFormat = "PDF"; WritingStyle = "Standard";
             UpdateManifestUrl = UpdatePublisherThumbprint = ""; Theme = "System"; ShowToolbar = true; ShowVoiceIndicator = false; ReduceNoise = true; ReducedMotion = false; NoteMicrophoneId = NoteOutputId = ""; Personalization = new List<PersonalRule>();
-            SmartCleanupEnabled = true;
+            SmartCleanupEnabled = false;
             Hotkey = "F8"; NotesHotkey = "Ctrl+Shift+N"; NotesSource = "Microphone"; MeetingSource = "Both"; ToolbarX = ToolbarY = Int32.MinValue; Microphone = DefaultMic; CleanupEnabled = true; AutoPaste = true; LiveWriting = true; PasteMethod = "Auto"; StartWithWindows = false; AutoStartStt = true;
             SttUrl = "http://127.0.0.1:5000";
             SttLauncher = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @"Documents\projects\ollama-personal-model\holly_server.py");
@@ -141,6 +141,7 @@ namespace LocalDictation
 
         public void Validate()
         {
+            SmartCleanupEnabled = false; // Retired preference; old settings must not enable sentence rewriting.
             BallColorMode=BallAppearance=="Color" ? "Solid color" : BallAppearance=="Gradient" ? "Gradient" : "Original colors"; // Legacy field: appearance now determines the finish.
             if(!Regex.IsMatch(BallColor1??"","^#[0-9a-fA-F]{6}$") || !Regex.IsMatch(BallColor2??"","^#[0-9a-fA-F]{6}$")) throw new InvalidDataException("Choose valid ball colors.");
             if(BallGradientAngle<0 || BallGradientAngle>359) throw new InvalidDataException("Choose a gradient angle from 0 to 359 degrees.");

@@ -61,40 +61,19 @@ def test_voice_identity_and_late_name_linking(tmp_path):
     assert 'voices-ok' in result.stdout
 
 
-def test_worker_rejects_changed_numeric_facts(monkeypatch):
+@pytest.mark.parametrize('text', ['I paid 15 dollars.', 'i has a meeting tomorrow'])
+def test_legacy_refine_preserves_text_without_network_or_process(monkeypatch, text):
+    import urllib.request
     spec = importlib.util.spec_from_file_location('quality_worker', ROOT / 'engine/quality_worker.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    class Response:
-        def __enter__(self): return self
-        def __exit__(self, *args): pass
-        def read(self): return json.dumps({'response': json.dumps({'text': 'I paid 50 dollars.'})}).encode()
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Grammar must not contact a service or launch a process')
 
-    class Opener:
-        def open(self, request, timeout): return Response()
-
-    monkeypatch.setattr(module, 'ensure_grammar', lambda: None)
-    monkeypatch.setattr(module.urllib.request, 'build_opener', lambda *args: Opener())
-    assert module.refine('I paid 15 dollars.') == 'I paid 15 dollars.'
-
-
-def test_worker_rejects_grammar_that_invents_extra_clauses(monkeypatch):
-    spec = importlib.util.spec_from_file_location('quality_worker', ROOT / 'engine/quality_worker.py')
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    class Response:
-        def __enter__(self): return self
-        def __exit__(self, *args): pass
-        def read(self): return json.dumps({'response': json.dumps({'text': 'I have a meeting tomorrow with the team to discuss the entire project roadmap.'})}).encode()
-
-    class Opener:
-        def open(self, request, timeout): return Response()
-
-    monkeypatch.setattr(module, 'ensure_grammar', lambda: None)
-    monkeypatch.setattr(module.urllib.request, 'build_opener', lambda *args: Opener())
-    assert module.refine('i has a meeting tomorrow') == 'i has a meeting tomorrow'
+    monkeypatch.setattr(urllib.request, 'build_opener', forbidden)
+    monkeypatch.setattr(subprocess, 'Popen', forbidden)
+    assert module.refine(text) == text
 
 
 @pytest.mark.parametrize('raw,edited,expected', [
