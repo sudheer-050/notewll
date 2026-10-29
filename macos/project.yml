@@ -48,6 +48,7 @@ targets:
       - sdk: ApplicationServices.framework
       - sdk: Carbon.framework
       - sdk: ServiceManagement.framework
+      - sdk: CoreText.framework
       - framework: Vendor/libvosk.dylib
         embed: true
         codeSign: true

@@ -9,64 +9,46 @@ import Foundation
 ///  - A regular key held together with modifiers (e.g. Ctrl+Shift+D): "down"
 ///    = keyDown with the required modifiers already set, "up" = keyUp of that
 ///    same keyCode.
+///
+/// Events are delivered by the shared `HotkeyCoordinator`, not a private
+/// CGEventTap -- `NotesHotkeyManager` subscribes to the same coordinator so
+/// both hotkeys work off one tap.
 final class HotkeyManager {
     var combo: KeyCombo
     var onDictateStart: (() -> Void)?
     var onDictateStop: (() -> Void)?
 
-    /// Non-nil while in "capture next combo" mode for the rebind UI.
-    var onComboCaptured: ((KeyCombo) -> Void)?
-
-    private var monitor: GlobalEventMonitor?
+    private var subscriptionToken: UUID?
     private var isHolding = false
-    private var lastFlags: CGEventFlags = []
 
     init(combo: KeyCombo) {
         self.combo = combo
     }
 
-    @discardableResult
-    func start() -> Bool {
-        let monitor = GlobalEventMonitor { [weak self] type, keyCode, flags in
+    func start() {
+        guard subscriptionToken == nil else { return }
+        subscriptionToken = HotkeyCoordinator.shared.subscribe { [weak self] type, keyCode, flags in
             self?.handle(type: type, keyCode: keyCode, flags: flags)
         }
-        let ok = monitor.start()
-        if ok { self.monitor = monitor }
-        return ok
     }
 
     func stop() {
-        monitor?.stop()
-        monitor = nil
+        if let token = subscriptionToken {
+            HotkeyCoordinator.shared.unsubscribe(token)
+        }
+        subscriptionToken = nil
     }
 
-    /// Puts the manager in a one-shot mode: the next key or modifier pressed
-    /// becomes the new combo and is reported via `onComboCaptured`. Used by
-    /// the Settings rebind control.
+    /// Forwards to the shared coordinator -- see its doc comment. Kept as a
+    /// method here so existing call sites (`hotkeyManager.beginCapturingNextCombo`)
+    /// don't need to change shape.
     func beginCapturingNextCombo(_ completion: @escaping (KeyCombo) -> Void) {
-        onComboCaptured = completion
+        HotkeyCoordinator.shared.beginCapturingNextCombo(completion)
     }
 
     private func handle(type: CGEventType, keyCode: CGKeyCode, flags: CGEventFlags) {
         let maskedFlags = CGEventFlags(rawValue: flags.rawValue & KeyCombo.relevantFlagsMask)
-
-        if let capture = onComboCaptured {
-            if type == .keyDown {
-                onComboCaptured = nil
-                capture(KeyCombo(keyCode: keyCode, flags: maskedFlags.rawValue))
-                return
-            }
-            if type == .flagsChanged, maskedFlags.rawValue != 0, maskedFlags.rawValue != lastFlags.rawValue & KeyCombo.relevantFlagsMask {
-                onComboCaptured = nil
-                capture(KeyCombo(keyCode: keyCode, flags: maskedFlags.rawValue))
-                lastFlags = flags
-                return
-            }
-            lastFlags = flags
-            return
-        }
-
-        let comboIsModifierOnly = isModifierKeyCode(combo.keyCode)
+        let comboIsModifierOnly = KeyCombo.isModifierKeyCode(combo.keyCode)
 
         if comboIsModifierOnly {
             guard type == .flagsChanged, keyCode == combo.keyCode else { return }
@@ -87,12 +69,5 @@ final class HotkeyManager {
                 onDictateStop?()
             }
         }
-
-        lastFlags = flags
-    }
-
-    private func isModifierKeyCode(_ code: CGKeyCode) -> Bool {
-        // Right/left Option, Shift, Control, Command physical key codes.
-        [0x3D, 0x3A, 0x3C, 0x38, 0x3E, 0x3B, 0x36, 0x37].contains(code)
     }
 }

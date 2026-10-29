@@ -9,6 +9,7 @@ final class SettingsStore {
 
     private enum Key {
         static let hotkeyCombo = "hotkeyCombo"
+        static let notesHotkeyCombo = "notesHotkeyCombo"
         static let microphoneDeviceID = "microphoneDeviceID"
         static let startAtLogin = "startAtLogin"
         static let injectionMode = "injectionMode"
@@ -25,6 +26,21 @@ final class SettingsStore {
         set {
             if let data = try? JSONEncoder().encode(newValue) {
                 defaults.set(data, forKey: Key.hotkeyCombo)
+            }
+        }
+    }
+
+    var notesHotkeyCombo: KeyCombo {
+        get {
+            guard let data = defaults.data(forKey: Key.notesHotkeyCombo),
+                  let combo = try? JSONDecoder().decode(KeyCombo.self, from: data) else {
+                return .defaultNotes
+            }
+            return combo
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                defaults.set(data, forKey: Key.notesHotkeyCombo)
             }
         }
     }

@@ -18,6 +18,14 @@ struct KeyCombo: Codable, Equatable {
     /// focused app the way Cmd/Ctrl combos can, and push-and-hold feels natural.
     static let defaultDictate = KeyCombo(keyCode: 0x3D, flags: CGEventFlags.maskAlternate.rawValue)
 
+    /// Default Notes hotkey: Ctrl+Shift+N, matching the real Windows app.
+    /// Unlike Dictate, this is a toggle (see `NotesHotkeyManager`), so a
+    /// multi-key combo doesn't have the same hold-ergonomics concern.
+    static let defaultNotes = KeyCombo(
+        keyCode: 0x2D,
+        flags: CGEventFlags.maskControl.rawValue | CGEventFlags.maskShift.rawValue
+    )
+
     var cgFlags: CGEventFlags {
         CGEventFlags(rawValue: flags & KeyCombo.relevantFlagsMask)
     }
@@ -37,6 +45,14 @@ struct KeyCombo: Codable, Equatable {
         return parts.joined()
     }
 
+    /// Right/left Option, Shift, Control, Command physical key codes -- these
+    /// never generate keyDown/keyUp, only `.flagsChanged`. Shared by
+    /// `HotkeyManager` and `NotesHotkeyManager` so the modifier-only-vs-regular
+    /// key branch isn't duplicated.
+    static func isModifierKeyCode(_ code: CGKeyCode) -> Bool {
+        [0x3D, 0x3A, 0x3C, 0x38, 0x3E, 0x3B, 0x36, 0x37].contains(code)
+    }
+
     static func keyName(for keyCode: CGKeyCode) -> String {
         switch keyCode {
         case 0x3D: return "Right Option"
@@ -44,6 +60,7 @@ struct KeyCombo: Codable, Equatable {
         case 0x3E: return "Right Control"
         case 0x61: return "F7"
         case 0x31: return "Space"
+        case 0x2D: return "N"
         default: return "Key \(keyCode)"
         }
     }
