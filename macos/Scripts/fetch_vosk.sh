@@ -4,8 +4,9 @@
 # find what they expect. Never run this on Windows -- the binaries are macOS-only.
 set -euo pipefail
 
-VOSK_VERSION="0.3.45"
-VOSK_API_TAG="v${VOSK_VERSION}"
+VOSK_VERSION="0.3.44" # PyPI's vosk wheel tops out at 0.3.44 (no 0.3.45 published there)
+VOSK_API_TAG="v0.3.45" # vosk-api has no v0.3.44 tag; its C API header is stable across these
+                       # patch releases, so the v0.3.45 header is ABI-compatible with 0.3.44's dylib
 MODEL_NAME="vosk-model-small-en-us-0.15"
 MODEL_URL="https://alphacephei.com/vosk/models/${MODEL_NAME}.zip"
 HEADER_URL="https://raw.githubusercontent.com/alphacep/vosk-api/${VOSK_API_TAG}/src/vosk_api.h"
