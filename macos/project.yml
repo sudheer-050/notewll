@@ -2,7 +2,7 @@ name: LocalDictation
 options:
   bundleIdPrefix: com.gsudheer.localdictation
   deploymentTarget:
-    macOS: "13.0"
+    macOS: "14.0"
   xcodeVersion: "16.1"
 
 settings:
