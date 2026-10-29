@@ -30,9 +30,13 @@ fi
 echo "==> Unpacking ${WHEEL_FILE}"
 unzip -q "${WHEEL_FILE}" -d "${TMP_DIR}/wheel_extracted"
 
-DYLIB_SRC="$(find "${TMP_DIR}/wheel_extracted" -name 'libvosk.dylib' | head -n1)"
+# The PyPI wheel ships the Mach-O dylib under the name libvosk.dyld (not
+# .dylib) -- confirmed a valid universal2 (x86_64+arm64) binary despite the
+# odd extension. We rename it to .dylib on copy since that's what the
+# linker/Xcode embed step expects.
+DYLIB_SRC="$(find "${TMP_DIR}/wheel_extracted" -name 'libvosk.dyld' -o -name 'libvosk.dylib' | head -n1)"
 if [[ -z "${DYLIB_SRC}" ]]; then
-  echo "error: libvosk.dylib not found inside wheel -- wheel may not carry a macOS binary for this runner's architecture" >&2
+  echo "error: libvosk.dyld/dylib not found inside wheel -- wheel may not carry a macOS binary for this runner's architecture" >&2
   exit 1
 fi
 cp "${DYLIB_SRC}" "${VENDOR_DIR}/libvosk.dylib"
