@@ -10,23 +10,26 @@ final class StatusItemController {
 
     init() {
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "mic", accessibilityDescription: "LocalDictation idle")
+            let image = NSImage(named: "StatusBarIdle")
+            image?.accessibilityDescription = "Notewll idle"
+            image?.isTemplate = false
+            button.image = image
         }
 
         let menu = NSMenu()
         menu.addItem(withTitle: "Settings…", action: #selector(handleSettings), keyEquivalent: ",")
             .target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit LocalDictation", action: #selector(handleQuit), keyEquivalent: "q")
+        menu.addItem(withTitle: "Quit Notewll", action: #selector(handleQuit), keyEquivalent: "q")
             .target = self
         statusItem.menu = menu
     }
 
     func setListening(_ isListening: Bool) {
-        statusItem.button?.image = NSImage(
-            systemSymbolName: isListening ? "mic.fill" : "mic",
-            accessibilityDescription: isListening ? "LocalDictation listening" : "LocalDictation idle"
-        )
+        let image = NSImage(named: isListening ? "StatusBarListening" : "StatusBarIdle")
+        image?.accessibilityDescription = isListening ? "Notewll listening" : "Notewll idle"
+        image?.isTemplate = false
+        statusItem.button?.image = image
     }
 
     @objc private func handleSettings() {

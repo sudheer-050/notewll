@@ -6,7 +6,7 @@ final class OnboardingWindowController: NSWindowController {
         let view = OnboardingView(onAllGranted: onAllGranted)
         let hosting = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: hosting)
-        window.title = "Welcome to LocalDictation"
+        window.title = "Welcome to Notewll"
         window.styleMask = [.titled, .closable]
         self.init(window: window)
     }

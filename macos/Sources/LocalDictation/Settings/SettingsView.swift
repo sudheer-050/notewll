@@ -70,7 +70,7 @@ struct SettingsView: View {
             }
 
             Section("Startup") {
-                Toggle("Start LocalDictation at login", isOn: $startAtLogin)
+                Toggle("Start Notewll at login", isOn: $startAtLogin)
                     .onChange(of: startAtLogin) { _, newValue in
                         SettingsStore.shared.startAtLogin = newValue
                         LoginItemManager.shared.setEnabled(newValue)

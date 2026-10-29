@@ -50,7 +50,7 @@ far:
 Not yet covered: Notes/Meeting modes, the Accurate/Enhanced ASR tiers,
 hands-free + voice matching, semantic search, the floating indicator, and
 most of the settings surface. Builds as an unsigned `.dmg` via GitHub
-Actions (`macos/.github/workflows/build-dmg.yml`) since the build requires
+Actions (`.github/workflows/macos-build-dmg.yml`) since the build requires
 macOS/Xcode and no Mac was available locally to produce it. See
 `macos/README.md` for build/run/permission instructions.
 

@@ -37,14 +37,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard voskEngine == nil else { return } // already started
 
         guard let modelPath = Bundle.main.path(forResource: "vosk-model-small-en-us-0.15", ofType: nil) else {
-            NSLog("LocalDictation: bundled Vosk model not found -- was this built without running Scripts/fetch_vosk.sh?")
+            NSLog("Notewll: bundled Vosk model not found -- was this built without running Scripts/fetch_vosk.sh?")
             return
         }
 
         do {
             voskEngine = try VoskEngine(modelPath: modelPath)
         } catch {
-            NSLog("LocalDictation: failed to load Vosk model: \(error)")
+            NSLog("Notewll: failed to load Vosk model: \(error)")
             return
         }
 
@@ -58,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotkeyManager = manager
 
         if !manager.start() {
-            NSLog("LocalDictation: could not start the global hotkey tap -- Input Monitoring permission may be missing.")
+            NSLog("Notewll: could not start the global hotkey tap -- Input Monitoring permission may be missing.")
         }
     }
 
@@ -68,7 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         do {
             try audioCapture.start(deviceUID: deviceID.isEmpty ? nil : deviceID)
         } catch {
-            NSLog("LocalDictation: failed to start audio capture: \(error)")
+            NSLog("Notewll: failed to start audio capture: \(error)")
             statusItemController?.setListening(false)
         }
     }

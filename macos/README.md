@@ -1,31 +1,33 @@
-# LocalDictation (macOS)
+# Notewll (macOS)
 
 **Version 0.10.0** — matches the Windows Notewll app's current version number.
 This is the first macOS build: core dictate loop only (see "Phase 1 scope"
 below). Nothing else from the Windows app has been ported yet.
 
-A from-scratch macOS reimplementation of the core dictation loop from a
-Windows app the author uses, called "Notewll"/LocalDictation. **This is not
-a clone of that app's code** (it's closed-source .NET/WinForms) — it's a new
-native Mac app with equivalent *behavior*: hold a hotkey, speak, release, and
-the transcribed text is typed/pasted into whatever app is focused. Fully
-offline, using [Vosk](https://alphacephei.com/vosk/) for speech recognition
-— nothing you say ever leaves your Mac.
+A from-scratch macOS reimplementation of the core dictation loop from the
+Windows Notewll app. **This is not a clone of that app's code** (it's
+closed-source .NET/WinForms) — it's a new native Mac app with equivalent
+*behavior*: hold a hotkey, speak, release, and the transcribed text is
+typed/pasted into whatever app is focused. Fully offline, using
+[Vosk](https://alphacephei.com/vosk/) for speech recognition — nothing you
+say ever leaves your Mac.
 
 ## Setup
 
-1. **Download**: grab `LocalDictation-dmg` from the latest green run of
+1. **Download**: grab `Notewll-dmg` from the latest green run of
    [Build macOS DMG](../../actions/workflows/macos-build-dmg.yml) (Actions
    tab → pick a run → scroll to **Artifacts**). It downloads as a zip;
-   unzip it to get `LocalDictation.dmg`.
-2. **Install**: open the `.dmg`, drag `LocalDictation.app` to `Applications`
-   (or anywhere you like).
+   unzip it to get `Notewll.dmg`.
+2. **Install**: open the `.dmg`, drag `Notewll.app` to `Applications`
+   (or anywhere you like) — don't run it directly from the mounted disk
+   image, or macOS will randomize its path on every launch and break
+   permission grants.
 3. **First launch — Gatekeeper warning**: this is an unsigned, personal-use
    build (no Apple Developer account), so macOS will warn "Apple could not
    verify this app is free of malware." Control-click (right-click) the app
    → **Open**, and confirm. (If that option doesn't appear, run
-   `xattr -dr com.apple.quarantine /Applications/LocalDictation.app` in
-   Terminal, then open it normally.)
+   `xattr -dr com.apple.quarantine /Applications/Notewll.app` in Terminal,
+   then open it normally.)
 4. **Grant permissions**: on first launch the app shows an onboarding
    window listing three required permissions — **Microphone**,
    **Input Monitoring**, and **Accessibility**. Click **Grant…** next to
@@ -36,7 +38,10 @@ offline, using [Vosk](https://alphacephei.com/vosk/) for speech recognition
    - *Input Monitoring*: so it can detect the hotkey system-wide.
    - *Accessibility*: so it can type the result into whatever app you're
      using.
-5. You're set up. The app lives in the menu bar as a small mic icon — no
+   - If a permission doesn't appear in its System Settings list after
+     clicking Grant, use the **+** button there to add `Notewll.app`
+     manually — see Troubleshooting below.
+5. You're set up. The app lives in the menu bar with the Notewll logo — no
    Dock icon, no window, by design.
 
 ## How to use it
@@ -51,21 +56,28 @@ offline, using [Vosk](https://alphacephei.com/vosk/) for speech recognition
   - Pick a specific microphone instead of the system default
   - Switch between **Paste** (default) and **Direct typing** — try direct
     typing if a particular app ignores the synthetic paste
-  - Toggle **Start LocalDictation at login**
-- **Quit**: menu-bar icon → **Quit LocalDictation**.
+  - Toggle **Start Notewll at login**
+- **Quit**: menu-bar icon → **Quit Notewll**.
 
 ### Troubleshooting
 
 - **Nothing happens when I hold the hotkey**: check System Settings →
-  Privacy & Security → Input Monitoring — LocalDictation must be checked.
-  If you rebuilt/re-downloaded the app, macOS sometimes revokes this and
-  you'll need to re-grant it.
+  Privacy & Security → Input Monitoring — Notewll must be checked.
+  If it's not even listed, click **Grant…** again in the app's onboarding
+  (which now actively probes for an event tap to force macOS to register
+  it), or add it manually via the **+** button in that System Settings
+  list. If you rebuilt/re-downloaded the app, macOS sometimes revokes this
+  and you'll need to re-grant it. As a last resort, reset any stale state
+  with `tccutil reset ListenEvent com.gsudheer.localdictation` in Terminal,
+  then relaunch and retry.
 - **Text doesn't get typed into the app I'm using**: same idea, but for
-  Accessibility instead — check it's still granted there. Some apps also
-  reject synthetic paste; try switching to **Direct typing** in Settings.
+  Accessibility instead — check it's still granted there (or
+  `tccutil reset Accessibility com.gsudheer.localdictation`). Some apps
+  also reject synthetic paste; try switching to **Direct typing** in
+  Settings.
 - **No menu-bar icon appears at all**: the app may have failed to load its
-  bundled Vosk model (check Console.app for `LocalDictation:` log lines) —
-  this would mean the `.dmg` was built without the model, which would be a
+  bundled Vosk model (check Console.app for `Notewll:` log lines) — this
+  would mean the `.dmg` was built without the model, which would be a
   packaging bug worth reporting.
 
 ## Phase 1 scope
@@ -92,11 +104,12 @@ macOS. If you're on Windows/Linux:
 1. Push this repo to GitHub.
 2. Go to **Actions → Build macOS DMG → Run workflow** (or push a tag
    matching `macos-v*`).
-3. Download the `LocalDictation-dmg` artifact once the run finishes.
+3. Download the `Notewll-dmg` artifact once the run finishes.
 
 If you do have a Mac: `brew install xcodegen`, run `Scripts/fetch_vosk.sh`
 once to vendor the Vosk dylib/header/model, then `xcodegen generate` and
-open `LocalDictation.xcodeproj` in Xcode.
+open `LocalDictation.xcodeproj` in Xcode (the internal project filename —
+the built, installable app is still named `Notewll.app`).
 
 ## Why these specific technical choices
 

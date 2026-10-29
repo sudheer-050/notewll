@@ -4,9 +4,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_PATH="${1:-${ROOT_DIR}/build/Build/Products/Release/LocalDictation.app}"
-DMG_PATH="${2:-${ROOT_DIR}/LocalDictation.dmg}"
-VOLUME_NAME="LocalDictation"
+APP_PATH="${1:-${ROOT_DIR}/build/Build/Products/Release/Notewll.app}"
+DMG_PATH="${2:-${ROOT_DIR}/Notewll.dmg}"
+VOLUME_NAME="Notewll"
 
 if [[ ! -d "${APP_PATH}" ]]; then
   echo "error: app bundle not found at ${APP_PATH}" >&2

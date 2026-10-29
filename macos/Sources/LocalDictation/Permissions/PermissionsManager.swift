@@ -10,7 +10,7 @@ enum PermissionStatus {
     case notDetermined
 }
 
-/// Checks and requests the three TCC grants LocalDictation needs. None of
+/// Checks and requests the three TCC grants Notewll needs. None of
 /// these can be silently skipped: without Microphone there's no audio, without
 /// Input Monitoring the global hotkey tap can't receive events, without
 /// Accessibility synthetic keystrokes get dropped by the OS.

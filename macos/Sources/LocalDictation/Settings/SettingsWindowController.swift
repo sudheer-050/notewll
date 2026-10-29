@@ -6,7 +6,7 @@ final class SettingsWindowController: NSWindowController {
         let view = SettingsView(hotkeyManager: hotkeyManager, onSettingsChanged: onSettingsChanged)
         let hosting = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: hosting)
-        window.title = "LocalDictation Settings"
+        window.title = "Notewll Settings"
         window.styleMask = [.titled, .closable]
         self.init(window: window)
     }

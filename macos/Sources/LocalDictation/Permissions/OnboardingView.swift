@@ -11,7 +11,7 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("LocalDictation needs three permissions")
+            Text("Notewll needs three permissions")
                 .font(.title2).bold()
             Text("Everything stays on this Mac — audio is never uploaded anywhere.")
                 .font(.callout)

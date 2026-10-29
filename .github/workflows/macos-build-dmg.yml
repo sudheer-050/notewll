@@ -64,6 +64,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LocalDictation-dmg
-          path: macos/LocalDictation.dmg
+          name: Notewll-dmg
+          path: macos/Notewll.dmg
           if-no-files-found: error
