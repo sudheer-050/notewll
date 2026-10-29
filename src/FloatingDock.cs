@@ -66,6 +66,13 @@ namespace Notewll
                     using (var path = Surface.Shape(new RectangleF(18, 10, 8, 16), 4)) g.DrawPath(pen, path);
                     g.DrawLine(pen, 14, 19, 14, 23); g.DrawLine(pen, 30, 19, 30, 23); g.DrawArc(pen, 14, 15, 16, 16, 0, 180); g.DrawLine(pen, 22, 31, 22, 35); g.DrawLine(pen, 17, 35, 27, 35);
                 }
+                else if (Symbol == "handsfree")
+                {
+                    g.DrawArc(pen, 12, 9, 19, 25, 175, 255);
+                    g.DrawArc(pen, 17, 15, 9, 12, 190, 210);
+                    g.DrawArc(pen, 12, 26, 10, 10, 0, 155);
+                    g.DrawArc(pen, 27, 14, 10, 16, -60, 120);
+                }
                 else if (Symbol == "note")
                 {
                     using (var path = new GraphicsPath()) { path.AddLines(new[] { new PointF(14, 10), new PointF(25, 10), new PointF(32, 17), new PointF(32, 32), new PointF(12, 32), new PointF(12, 12), new PointF(14, 10) }); g.DrawPath(pen, path); }
@@ -86,6 +93,8 @@ namespace Notewll
     sealed class FloatingDock : Form
     {
         readonly DockButton write = new DockButton { Text = "Dictate", AccessibleName = "Toggle dictation" }, note = new DockButton { Text = "Note", AccessibleName = "Toggle personal note" }, meeting = new DockButton { Text = "Meeting", AccessibleName = "Toggle meeting note" };
+        readonly DockButton handsFree = new DockButton { Text = "Hands-free", AccessibleName = "Start hands-free listening", Symbol = "handsfree" };
+        readonly ToolTip actionTips = new ToolTip();
         readonly Panel grip = new Panel { Cursor = Cursors.SizeAll, BackColor = Color.Transparent };
         readonly BallPhysics ball = new BallPhysics();
         readonly Timer falling = new Timer { Interval = 15 };
@@ -133,7 +142,7 @@ namespace Notewll
         float dpi = 1;
         Point restingPosition;
         Point dragStart, locationStart;
-        public Action ToggleWrite, ToggleNote, ToggleMeeting, CancelWrite;
+        public Action ToggleWrite, ToggleNote, ToggleMeeting, ToggleHandsFree, CancelWrite;
         bool processingDictation, enabled = true;
         public string VisibilityDescription { get { return !enabled ? "Hidden in preferences" : snoozedUntil != DateTime.MinValue ? "Hidden until " + snoozedUntil.ToString("t") : "Ready on the screen edge"; } }
         DateTime snoozedUntil;
@@ -141,7 +150,9 @@ namespace Notewll
         public FloatingDock()
         {
             Text = "Notewll toolbar"; Icon = AppLogo.Icon; FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; TopMost = true; AutoScaleMode = AutoScaleMode.None; BackColor = DockButton.Canvas; DoubleBuffered = true; Opacity = .96; ClientSize = new Size(28, 28); StartPosition = FormStartPosition.Manual;
-            Controls.AddRange(new Control[] { grip, write, note, meeting });
+            Controls.AddRange(new Control[] { grip, write, note, meeting, handsFree });
+            handsFree.Click += (s, e) => { if (ToggleHandsFree != null) ToggleHandsFree(); };
+            actionTips.SetToolTip(write, "Dictate"); actionTips.SetToolTip(note, "Personal note"); actionTips.SetToolTip(meeting, "Meeting"); actionTips.SetToolTip(handsFree, "Start hands-free listening - enrolled voice only");
             write.Click += (s, e) => { if (processingDictation) { if (CancelWrite != null) CancelWrite(); } else if (ToggleWrite != null) ToggleWrite(); };
             note.Click += (s, e) => { if (ToggleNote != null) ToggleNote(); }; meeting.Click += (s, e) => { if (ToggleMeeting != null) ToggleMeeting(); };
             grip.MouseDown += DragStart; MouseDown += DragStart;
@@ -168,6 +179,7 @@ namespace Notewll
                 if (e.Button != MouseButtons.Left || dragMoved) return;
                 if (signalMode == 0) return; // Idle clicks are handled on release, after drag capture ends.
                 if (processingDictation) { if (CancelWrite != null) CancelWrite(); }
+                else if (handsFree.Active || handsFree.Working) { if (ToggleHandsFree != null) ToggleHandsFree(); }
                 else if (write.Active) { if (ToggleWrite != null) ToggleWrite(); }
                 else if (meeting.Active) { if (ToggleMeeting != null) ToggleMeeting(); }
                 else if (note.Active && ToggleNote != null) ToggleNote();
@@ -240,15 +252,15 @@ namespace Notewll
                 : new PointF(dockEdge == 0 ? centerInset : dockEdge == 1 ? Width - centerInset : Width / 2f,
                     dockEdge == 2 ? centerInset : dockEdge == 3 ? Height - centerInset : Height / 2f);
             grip.Visible = false;
-            var buttons = new[] { write, note, meeting };
+            var buttons = new[] { write, note, meeting, handsFree };
             float inward = dockEdge == 0 ? 0 : dockEdge == 1 ? 180 : dockEdge == 2 ? 90 : -90;
             for (int i = 0; i < buttons.Length; i++)
             {
                 buttons[i].Visible = morph > 0 && signalMode == 0;
                 // Dots travel out first, then unfurl into their action glyphs.
                 buttons[i].Morph = Math.Max(0, Math.Min(1, (morph - .25f) / .65f));
-                double angle = (inward + (i - 1) * 55) * Math.PI / 180;
-                float startX = fanCenter.X + Px((i - 1) * 5);
+                double angle = (inward + (i - (buttons.Length - 1) / 2f) * (124f / (buttons.Length - 1))) * Math.PI / 180;
+                float startX = fanCenter.X + Px((int)Math.Round((i - (buttons.Length - 1) / 2f) * 5));
                 float startY = fanCenter.Y;
                 float endX = fanCenter.X + BallCatalog.FanRadius*expandedScale*dpi * (float)Math.Cos(angle);
                 float endY = fanCenter.Y + BallCatalog.FanRadius*expandedScale*dpi * (float)Math.Sin(angle);
@@ -417,11 +429,15 @@ namespace Notewll
             if (dragMoved || caughtInFlight) BeginFall();
             else if (signalMode == 0) SetExpanded(true);
         }
-        public void UpdateState(bool writing, bool processing, bool notesRecording, bool noteBusy, bool isMeeting, string message)
+        public void UpdateState(bool writing, bool processing, bool notesRecording, bool noteBusy, bool isMeeting, string message, bool handsFreeActive = false, bool handsFreePreparing = false, bool passiveListening = false)
         {
             write.Text = processing ? "Cancel transcription" : "Dictate"; note.Text = "Note"; meeting.Text = "Meeting";
             processingDictation = processing; write.Working = processing;
-            write.Active = writing; note.Active = notesRecording && !isMeeting; meeting.Active = notesRecording && isMeeting;
+            write.Active = writing && !handsFreeActive && !passiveListening; note.Active = notesRecording && !isMeeting; meeting.Active = notesRecording && isMeeting;
+            handsFree.Active = handsFreeActive; handsFree.Working = handsFreePreparing;
+            handsFree.Enabled = handsFreeActive || handsFreePreparing || (!writing && !processing && !noteBusy);
+            handsFree.AccessibleName = handsFreePreparing ? "Cancel hands-free setup" : handsFreeActive ? "Pause hands-free listening" : "Start hands-free listening";
+            actionTips.SetToolTip(handsFree, handsFreeActive ? "Pause hands-free - microphone is on" : handsFreePreparing ? "Cancel hands-free setup" : "Start hands-free listening - enrolled voice only");
             write.Enabled = !noteBusy; note.Enabled = !writing && !processing && (!noteBusy || notesRecording && !isMeeting); meeting.Enabled = !writing && !processing && (!noteBusy || notesRecording && isMeeting);
             int nextSignal = ShowVoiceIndicator ? (writing || notesRecording ? 1 : processing ? 2 : 0) : 0;
             if (nextSignal != signalMode)
@@ -430,10 +446,10 @@ namespace Notewll
                 signalMode = nextSignal; signalLevel = signalPhase = 0;
                 SetExpanded(expanded, true);
             }
-            AccessibleName = signalMode == 1 ? "Recording speech. Click to stop." : signalMode == 2 ? "Transcribing speech. Click to cancel." : "Notewll toolbar";
+            AccessibleName = handsFreeActive ? "Hands-free listening. Microphone on. Click to pause." : passiveListening ? "Microphone listening in Notewll." : signalMode == 1 ? "Recording speech. Click to stop." : signalMode == 2 ? "Transcribing speech. Click to cancel." : "Notewll toolbar";
             UpdateSignalTimer();
-            grip.Invalidate(); write.Invalidate(); note.Invalidate(); meeting.Invalidate();
+            grip.Invalidate(); write.Invalidate(); note.Invalidate(); meeting.Invalidate(); handsFree.Invalidate();
         }
-        protected override void Dispose(bool disposing) { if (disposing) { skin.Dispose(); falling.Dispose(); hover.Dispose(); morphAnimation.Dispose(); signalAnimation.Dispose(); Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= DisplaysChanged; } base.Dispose(disposing); }
+        protected override void Dispose(bool disposing) { if (disposing) { actionTips.Dispose(); skin.Dispose(); falling.Dispose(); hover.Dispose(); morphAnimation.Dispose(); signalAnimation.Dispose(); Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= DisplaysChanged; } base.Dispose(disposing); }
     }
 }

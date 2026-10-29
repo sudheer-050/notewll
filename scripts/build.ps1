@@ -1,6 +1,6 @@
 ﻿$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$version = '0.10.0'
+$version = '0.11.0'
 $build = Join-Path $root 'build'
 $dist = Join-Path $root 'dist'
 New-Item -ItemType Directory -Force $build, $dist | Out-Null
@@ -24,3 +24,4 @@ Copy-Item "$root\scripts\setup_handsfree.ps1" "$build\engine\setup_handsfree.ps1
 
 Copy-Item "$root\engine\semantic_worker.py" "$build\engine\semantic_worker.py" -Force
 Copy-Item "$root\scripts\setup_semantic.ps1" "$build\engine\setup_semantic.ps1" -Force
+Copy-Item "$root\scripts\setup_optional_speech.ps1" "$build\engine\setup_optional_speech.ps1" -Force

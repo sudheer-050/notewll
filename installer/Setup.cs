@@ -12,14 +12,14 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-[assembly: AssemblyVersion("0.10.0.0")]
+[assembly: AssemblyVersion("0.11.0.0")]
 [assembly: AssemblyTitle("Notewll Setup")]
 [assembly: AssemblyProduct("Notewll")]
 namespace NotewllSetup
 {
     sealed class SetupForm : Form
     {
-        const string Version = "0.10.0", RegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\LocalDictation";
+        const string Version = "0.11.0", RegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\LocalDictation";
         const string ModelUrl = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip";
         const string RuntimeUrl = "https://github.com/alphacep/vosk-api/releases/download/v0.3.45/vosk-win64-0.3.45.zip";
         readonly string destination = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "LocalDictation");
@@ -41,11 +41,16 @@ namespace NotewllSetup
         {
             Icon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
             this.uninstall = uninstall; AutoScaleMode = AutoScaleMode.None; Font = new Font("Segoe UI", 10);
-            Text = uninstall ? "Uninstall Notewll" : "Notewll Setup"; BackColor = Color.FromArgb(250, 249, 246);
+            Text = uninstall ? "Uninstall Notewll" : "Notewll Setup"; BackColor = Color.FromArgb(247, 248, 252); ForeColor = Color.FromArgb(32, 38, 56);
+            heading.Font = new Font("Segoe UI", 28, FontStyle.Bold);
+            description.ForeColor = status.ForeColor = Color.FromArgb(93, 101, 118);
+            action.BackColor = Color.FromArgb(92, 72, 201); action.FlatAppearance.BorderSize = 0;
+            close.FlatStyle = FlatStyle.Flat; close.FlatAppearance.BorderSize = 0; close.BackColor = Color.FromArgb(232, 229, 252);
             ClientSize = new Size(620, 440); FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; StartPosition = FormStartPosition.CenterScreen;
             description.Text = uninstall ? "Remove the application. Your notes, audio and preferences will be kept." : "One file. Offline English voice typing and notes.\nIncludes the app, speech engine and English model.\nEnhanced recognition models are optional downloads.";
             Controls.AddRange(new Control[] { heading, description, desktop, removeSpeech, removeNotes, progress, status, action, close });
             close.Text = "Cancel"; close.Visible = true; close.Click += (s, e) => { if (busy) { cancellation.Cancel(); close.Enabled = false; status.Text = "Canceling safely..."; } else Close(); };
+            AcceptButton = action; CancelButton = close;
             status.Text = "Windows 64-bit | Version " + Version + "\nReady to install. Your saved notes and preferences will be kept.";
             removeSpeech.Visible = removeNotes.Visible = uninstall;
             if (uninstall) { desktop.Visible = false; action.Text = "Uninstall"; status.Text = "Your saved notes remain in LocalAppData\\LocalDictation\\Notes."; }
@@ -97,7 +102,7 @@ namespace NotewllSetup
                 if (!File.Exists(Path.Combine(destination, "native", "libvosk.dll")) || !File.Exists(Path.Combine(destination, "model-small-en-us", "am", "final.mdl"))) throw new IOException("The speech files are incomplete. Retry setup.");
                 string exe = Path.Combine(destination, "Notewll.exe");
                 if (File.Exists(exe)) File.Copy(exe, Path.Combine(destination, "Notewll.previous.exe"), true);
-                File.WriteAllBytes(exe, Resource("Application")); Directory.CreateDirectory(Path.Combine(destination, "engine")); File.WriteAllBytes(Path.Combine(destination, "engine", "semantic_worker.py"), Resource("SemanticWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "setup_semantic.ps1"), Resource("SemanticSetup")); Directory.CreateDirectory(Path.Combine(destination, "engine")); File.WriteAllBytes(Path.Combine(destination, "engine", "voice_match_worker.py"), Resource("VoiceMatchWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "setup_handsfree.ps1"), Resource("VoiceMatchSetup")); File.WriteAllBytes(Path.Combine(destination, "engine", "quality_worker.py"), Resource("QualityWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "accurate_worker.py"), Resource("AccurateWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "silero_vad.onnx"), Resource("SpeechDetector")); File.WriteAllBytes(Path.Combine(destination, "THIRD_PARTY_NOTICES.md"), Resource("Notices"));
+                File.WriteAllBytes(exe, Resource("Application")); Directory.CreateDirectory(Path.Combine(destination, "engine")); File.WriteAllBytes(Path.Combine(destination, "engine", "semantic_worker.py"), Resource("SemanticWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "setup_semantic.ps1"), Resource("SemanticSetup")); Directory.CreateDirectory(Path.Combine(destination, "engine")); File.WriteAllBytes(Path.Combine(destination, "engine", "voice_match_worker.py"), Resource("VoiceMatchWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "setup_handsfree.ps1"), Resource("VoiceMatchSetup")); File.WriteAllBytes(Path.Combine(destination, "engine", "quality_worker.py"), Resource("QualityWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "accurate_worker.py"), Resource("AccurateWorker")); File.WriteAllBytes(Path.Combine(destination, "engine", "silero_vad.onnx"), Resource("SpeechDetector")); File.WriteAllBytes(Path.Combine(destination, "engine", "setup_optional_speech.ps1"), Resource("OptionalSpeechSetup")); File.WriteAllBytes(Path.Combine(destination, "THIRD_PARTY_NOTICES.md"), Resource("Notices"));
                 // Keep older pinned shortcuts and startup entries working after the rename.
                 File.Copy(exe, Path.Combine(destination, "LocalDictation.exe"), true);
                 cancellation.Token.ThrowIfCancellationRequested(); status.Text = "3/4 - Checking the installed speech model...";
@@ -239,6 +244,7 @@ namespace NotewllSetup
             if (args.Length > 0 && args[0] == "--inspect") { using (var hash = SHA256.Create()) Console.Write("version=" + Version + "|platform=Windows-x64|scope=current-user|engine=Vosk-small-English|model-download=none|offline-install=true|payload-sha256=" + BitConverter.ToString(hash.ComputeHash(Resource("Application"))).Replace("-", "").ToLowerInvariant()); return 0; }
             if (args.Length > 0 && args[0] == "--inspect-handsfree") { using (var hash = SHA256.Create()) Console.Write("worker-sha256=" + BitConverter.ToString(hash.ComputeHash(Resource("VoiceMatchWorker"))).Replace("-", "").ToLowerInvariant() + "|setup-sha256=" + BitConverter.ToString(hash.ComputeHash(Resource("VoiceMatchSetup"))).Replace("-", "").ToLowerInvariant()); return 0; }
             if (args.Length > 0 && args[0] == "--inspect-accuracy") { using (var hash = SHA256.Create()) Console.Write("worker-sha256=" + BitConverter.ToString(hash.ComputeHash(Resource("AccurateWorker"))).Replace("-", "").ToLowerInvariant() + "|detector-sha256=" + BitConverter.ToString(hash.ComputeHash(Resource("SpeechDetector"))).Replace("-", "").ToLowerInvariant()); return 0; }
+            if (args.Length > 0 && args[0] == "--inspect-optional-speech") { using (var hash = SHA256.Create()) Console.Write(BitConverter.ToString(hash.ComputeHash(Resource("OptionalSpeechSetup"))).Replace("-", "").ToLowerInvariant()); return 0; }
             if (args.Length == 4 && args[0] == "--test-extract") { try { Extract(args[1], args[2], args[3] == "dll"); return 0; } catch (Exception ex) { Console.Error.Write(ex.Message); return 2; } }
             Application.EnableVisualStyles();
             using (var form = new SetupForm(

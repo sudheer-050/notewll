@@ -26,8 +26,8 @@ namespace Notewll
                 int range = 2; bool reviewing = false;
                 var times = ranges.Select((name, i) => new HubButton { Text = name, Left = 18 + i % 3 * 194, Top = 48 + i / 3 * 46, Width = 182, Height = 36, Selected = i == range, AccessibleName = "Time range: " + name }).ToArray();
                 time.Controls.AddRange(times);
-                var from = new DateTimePicker { Left = 18, Top = 145, Width = 280, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d yyyy, HH:mm", Value = DateTime.Now.AddDays(-7), AccessibleName = "From date and time", Visible = false };
-                var to = new DateTimePicker { Left = 312, Top = 145, Width = 280, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d yyyy, HH:mm", Value = DateTime.Now, AccessibleName = "To date and time", Visible = false };
+                var from = new ThemedDateTimePicker { Left = 18, Top = 145, Width = 280, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d yyyy, HH:mm", Value = DateTime.Now.AddDays(-7), AccessibleName = "From date and time", Visible = false };
+                var to = new ThemedDateTimePicker { Left = 312, Top = 145, Width = 280, Format = DateTimePickerFormat.Custom, CustomFormat = "MMM d yyyy, HH:mm", Value = DateTime.Now, AccessibleName = "To date and time", Visible = false };
                 time.Controls.AddRange(new Control[] { from, to });
                 var timeHint = Text(time, "Only entries created within this period will be selected.", 18, 148, 570, 30, 9);
                 var types = Card(dialog, 316, 104); Text(types, "Activity types", 18, 12, 570, 24, 11, true);
@@ -36,7 +36,7 @@ namespace Notewll
                 var quantity = Card(dialog, 434, 92); Text(quantity, "How many?", 18, 12, 240, 25, 11, true);
                 var all = new HubButton { Text = "All matching", Selected = true, Left = 18, Top = 44, Width = 170, Height = 34, AccessibleName = "All matching items" };
                 var capped = new HubButton { Text = "Limit to newest", Left = 200, Top = 44, Width = 188, Height = 34, AccessibleName = "Limit number of items" };
-                var limit = new NumericUpDown { Left = 406, Top = 46, Width = 180, Minimum = 1, Maximum = 1000000, Value = 100, Enabled = false, AccessibleName = "Maximum items" }; quantity.Controls.AddRange(new Control[] { all, capped, limit });
+                var limit = new WheelNumber { Left = 406, Top = 46, Width = 180, Minimum = 1, Maximum = 1000000, Value = 100, Enabled = false, AccessibleName = "Maximum items" }; quantity.Controls.AddRange(new Control[] { all, capped, limit });
                 var summary = Card(dialog, 540, 82); summary.Fill = ThemeColors.Selected;
                 var count = Text(summary, "0", 18, 8, 100, 54, 28, true); count.AccessibleName = "Cleanup matching count";
                 var message = Text(summary, "entries selected", 128, 14, 460, 28, 11, true);
@@ -63,9 +63,7 @@ namespace Notewll
                     else { dialog.DialogResult = DialogResult.OK; dialog.Close(); }
                 };
                 back.Click += (s, e) => { if (reviewing) { reviewing = false; result = null; time.Enabled = types.Enabled = quantity.Enabled = true; back.Text = "Cancel"; remove.Text = "Review deletion"; update(); } else dialog.Close(); };
-                ThemeColors.Apply(dialog, "System"); summary.Fill = ThemeColors.Selected; foreach (Control child in summary.Controls) child.BackColor = ThemeColors.Selected;
-                float scale; using (var g = dialog.CreateGraphics()) scale = g.DpiX / 96f;
-                if (scale != 1) dialog.Scale(new SizeF(scale, scale));
+                ThemeColors.Apply(dialog, ThemeColors.Mode); summary.Fill = ThemeColors.Selected; foreach (Control child in summary.Controls) child.BackColor = ThemeColors.Selected;
                 dialog.FormBorderStyle = FormBorderStyle.FixedDialog; dialog.MaximizeBox = false; dialog.MinimizeBox = false;
                 update(); return dialog.ShowDialog(owner) == DialogResult.OK ? result : null;
             }

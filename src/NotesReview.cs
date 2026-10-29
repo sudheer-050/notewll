@@ -35,9 +35,9 @@ namespace Notewll
     {
         readonly HubButton pauseNote = new HubButton { Text = "Pause", Dock = DockStyle.Fill };
         readonly NotesPlayback player = new NotesPlayback();
-        readonly TextBox findText = new TextBox { Width = 160, AccessibleName = "Find in conversation" };
-        readonly TextBox excerptText = new TextBox { Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, ScrollBars = ScrollBars.Vertical };
-        readonly TrackBar playPosition = new TrackBar { Width = 120, Minimum = 0, Maximum = 1, TickStyle = TickStyle.None, Height = 28 };
+        readonly TextBox findText = new ThemedTextBox { Width = 160, AccessibleName = "Find in conversation" };
+        readonly TextBox excerptText = new ThemedTextBox { Multiline = true, ReadOnly = true, Dock = DockStyle.Fill, ScrollBars = ScrollBars.Vertical };
+        readonly TrackBar playPosition = new ThemedTrackBar { Width = 120, Minimum = 0, Maximum = 1, TickStyle = TickStyle.None, Height = 28 };
         readonly ComboBox audioSource = Choice(), speed = Choice(), sort = Choice(), filter = Choice();
         readonly Label playTime = new Label { AutoSize = true, Padding = new Padding(0, 5, 0, 0) };
         Button playButton, pausePlayback;
@@ -82,8 +82,8 @@ namespace Notewll
             SaveEdits(); populating = true; history.Items.Clear();
             foreach (var note in Sorted(documents, config.NotesSort))
             {
-                if (browserKind > 0 && ActivityHistory.Kind(note) != new[] { "", "Dictation", "Note", "Meeting" }[browserKind]) continue;
-                if (filter.SelectedIndex == 1 && note.Kind == "Meeting" || filter.SelectedIndex == 2 && note.Kind != "Meeting") continue;
+                if (browserKind > 0 && ActivityHistory.Kind(note) != new[] { "", "Dictation", "Note", "Conversation", "Meeting" }[browserKind]) continue;
+                if (filter.SelectedIndex == 1 && ActivityHistory.Kind(note) != "Note" || filter.SelectedIndex == 2 && note.Kind != "Meeting" || filter.SelectedIndex == 3 && note.Kind != "Conversation") continue;
                 string searchable; lock (note) searchable = note.Title + " " + note.UserName + " " + note.Kind + " " + note.WrittenNotes + " " + note.Tags + " " + String.Join(" ", note.Participants) + " " + NoteStore.Transcript(note);
                 if (ConversationTools.Matches(note, libraryQuery, searchable)) history.Items.Add(note);
             }
@@ -101,11 +101,11 @@ namespace Notewll
             librarySearch = search;
             emptyState.Controls.Add(new Label { Text = "Capture what matters. Choose a starting point.", AutoSize = true, MaximumSize = new Size(260, 0), Margin = new Padding(0, 0, 0, 18) });
             Action<string, Action> start = (label, action) => { var button = new HubButton { Text = label, Width = 220, Height = 38 }; button.Click += (s, e) => action(); emptyState.Controls.Add(button); };
-            start("Write a note", NewWrittenNote); start("Record a personal note", () => Toggle(preferredSource, "Note")); start("Record a meeting", () => Toggle(config.MeetingSource, "Meeting"));
+            start("New voice note", NewVoiceNote); start("New conversation", NewConversation); start("Record online meeting", RecordOnlineMeeting); start("Write a note", NewWrittenNote);
             noteTab.Controls.Add(emptyState); emptyState.BringToFront();
             library.RowCount = 6; library.RowStyles.Clear(); foreach (int height in new[] { 28, 34, 34, 34, -1, 42 }) library.RowStyles.Add(new RowStyle(height < 0 ? SizeType.Percent : SizeType.Absolute, height < 0 ? 100 : height));
             var fresh = library.GetControlFromPosition(0, 3); library.SetRow(fresh, 5); library.SetRow(history, 4);
-            filter.Items.AddRange(new object[] { "All notes & meetings", "Personal notes", "Meetings" }); filter.SelectedIndex = 0; library.Controls.Add(filter, 0, 2); filter.SelectedIndexChanged += (s, e) => Refilter();
+            filter.Items.AddRange(new object[] { "All recordings and notes", "Personal notes", "Meetings", "Conversations" }); filter.SelectedIndex = 0; library.Controls.Add(filter, 0, 2); filter.SelectedIndexChanged += (s, e) => Refilter();
             sort.Items.AddRange(new object[] { "Newest", "Oldest", "Title", "Longest" }); sort.SelectedItem = config.NotesSort; sort.AccessibleName = "Sort notes"; library.Controls.Add(sort, 0, 3);
             sort.SelectedIndexChanged += (s, e) => { config.NotesSort = sort.Text; try { config.Save(); } catch (Exception ex) { uiError = "Sort applied for this session. Could not save preference: " + ex.Message; } Refilter(); };
             history.MouseMove += (s, e) => { int index = history.IndexFromPoint(e.Location); if (index >= 0) { var note = (NoteDocument)history.Items[index]; reviewHints.SetToolTip(history, note.Title + "\n" + note.CreatedUtc + " | " + note.Status); } };
@@ -144,7 +144,7 @@ namespace Notewll
             var excerptTab = new TabPage("Local review"); var generate = new HubButton { Text = "Create overview from source quotes", Dock = DockStyle.Top, Height = 34 };
             generate.Click += (s, e) => { if (selected == null) return; lock (selected) { selected.Summary = NotesSummary.Generate(selected); store.Save(selected); excerptText.Text = selected.Summary; } };
             excerptTab.Controls.Add(excerptText); excerptTab.Controls.Add(generate); tabs.TabPages.Add(excerptTab);
-            var questions = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true }; var question = new TextBox { Width = 230, AccessibleName = "Search meeting statements" }; var ask = new HubButton { Text = "Find statements", Width = 140, Height = 32 };
+            var questions = new FlowLayoutPanel { Dock = DockStyle.Top, AutoSize = true, WrapContents = true }; var question = new ThemedTextBox { Width = 230, AccessibleName = "Search meeting statements" }; var ask = new HubButton { Text = "Find statements", Width = 140, Height = 32 };
             Action answer = () => { if (selected != null) lock (selected) excerptText.Text = NotesSummary.Answer(selected, question.Text); };
             ask.Click += (s, e) => answer(); question.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; answer(); } }; questions.Controls.AddRange(new Control[] { question, ask }); excerptTab.Controls.Add(questions); questions.BringToFront(); generate.BringToFront();
             var playback = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 5, RowCount = 2, Padding = new Padding(0, 6, 0, 0), Margin = Padding.Empty };
@@ -261,7 +261,7 @@ namespace Notewll
                 var list = new ListView { Dock = DockStyle.Fill, View = View.Details, FullRowSelect = true, MultiSelect = true, HideSelection = false, AccessibleName = "Original statements to label" };
                 list.Columns.Add("Time / source", 150); list.Columns.Add("Original words", 430); list.Columns.Add("Speaker", 150);
                 Action refresh = () => { list.Items.Clear(); for (int i = 0; i < note.Segments.Count; i++) { var section = note.Segments[i]; if (!section.Complete || String.IsNullOrWhiteSpace(section.RawText ?? section.Text)) continue; var item = new ListViewItem(TimeSpan.FromSeconds((section.TranscriptStartFrame ?? section.StartFrame) / 16000.0).ToString(@"hh\:mm\:ss") + " / " + section.Source) { Tag = i }; item.SubItems.Add((section.RawText ?? section.Text).Replace("\r", "").Replace("\n", " ")); item.SubItems.Add(String.IsNullOrWhiteSpace(labels[i]) ? section.VoiceId ?? "" : labels[i]); list.Items.Add(item); } }; refresh(); layout.Controls.Add(list, 0, 1);
-                var assign = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true }; var speaker = new ComboBox { Width = 220, DropDownStyle = ComboBoxStyle.DropDown, MaxLength = 80, AccessibleName = "Speaker name" }; speaker.Items.AddRange(note.Participants.Concat(new[] { note.UserName }).Concat(labels).Where(name => !String.IsNullOrWhiteSpace(name)).Distinct().Cast<object>().ToArray());
+                var assign = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true }; var speaker = new ThemedComboBox { Width = 220, DropDownStyle = ComboBoxStyle.DropDown, MaxLength = 80, AccessibleName = "Speaker name" }; speaker.Items.AddRange(note.Participants.Concat(new[] { note.UserName }).Concat(labels).Where(name => !String.IsNullOrWhiteSpace(name)).Distinct().Cast<object>().ToArray());
                 assign.Controls.Add(new Label { Text = "Speaker", AutoSize = true, Padding = new Padding(0, 8, 0, 0) }); assign.Controls.Add(speaker);
                 assign.Controls.Add(DialogUi.Button("Assign to selection", (s, e) => { if (speaker.Text.Length > 80 || speaker.Text.Any(Char.IsControl)) { MessageBox.Show(dialog, "Use a speaker name up to 80 characters without line breaks."); return; } foreach (ListViewItem item in list.SelectedItems) { labels[(int)item.Tag] = speaker.Text.Trim(); item.SubItems[2].Text = speaker.Text.Trim(); } })); layout.Controls.Add(assign, 0, 2);
                 assign.Controls.Add(DialogUi.Button("Play selected voice sample", (s, e) => { if (list.SelectedItems.Count == 0) return; var section = note.Segments[(int)list.SelectedItems[0].Tag]; try { player.Open(store.AudioPath(note, section.Source)); player.PlaySample((int)(section.StartFrame / 16), (int)((section.StartFrame + Math.Min(section.Frames, 128000)) / 16)); } catch (Exception ex) { MessageBox.Show(dialog, ex.Message); } }));

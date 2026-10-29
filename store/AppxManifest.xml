@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+ xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+ xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+ xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+ IgnorableNamespaces="uap desktop rescap">
+  <Identity Name="myhai.Notewll" Publisher="CN=5E594B67-5AA9-4911-86B3-F03D8F972769" Version="0.11.0.0" ProcessorArchitecture="x64" />
+  <Properties>
+    <DisplayName>Notewll</DisplayName>
+    <PublisherDisplayName>myhai</PublisherDisplayName>
+    <Description>Offline English voice typing, personal notes and meeting recordings.</Description>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Resources><Resource Language="en-us" /></Resources>
+  <Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.19041.0" MaxVersionTested="10.0.26100.0" /></Dependencies>
+  <Applications>
+    <Application Id="Notewll" Executable="Notewll.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="Notewll" Description="Offline voice typing and notes" BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png" Square310x310Logo="Assets\Square310x310Logo.png" Square71x71Logo="Assets\Square71x71Logo.png" />
+      </uap:VisualElements>
+      <Extensions>
+        <desktop:Extension Category="windows.startupTask" Executable="NotewllStartup.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="NotewllStartup" Enabled="false" DisplayName="Notewll" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Capabilities><rescap:Capability Name="runFullTrust" /><DeviceCapability Name="microphone" /></Capabilities>
+</Package>

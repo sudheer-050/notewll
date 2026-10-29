@@ -11,6 +11,7 @@ namespace Notewll
         Panel personalBody;
         TextBox personalTitle;
         Label personalDate, personalSaveState;
+        HubButton textVersionsButton;
         TableLayoutPanel personalLayout;
         bool personalLayoutRunning;
         bool reviewingConversation;
@@ -22,7 +23,7 @@ namespace Notewll
             personalLayout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 4, BackColor = ThemeColors.Card, Margin = Padding.Empty };
             personalLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
             personalLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60)); personalLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 30)); personalLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); personalLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44)); personalSheet.Controls.Add(personalLayout);
-            personalTitle = new TextBox { Multiline = true, WordWrap = false, MaxLength = 180, Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 20, FontStyle.Bold), BackColor = ThemeColors.Card, AccessibleName = "Edit personal note title", Margin = Padding.Empty };
+            personalTitle = new ThemedTextBox { Multiline = true, WordWrap = false, MaxLength = 180, Dock = DockStyle.Fill, BorderStyle = BorderStyle.None, Font = new Font("Segoe UI", 20, FontStyle.Bold), BackColor = ThemeColors.Card, AccessibleName = "Edit personal note title", Cue = "Untitled note", Margin = Padding.Empty };
             personalTitle.KeyDown += (s, e) => { if (e.KeyCode == Keys.Enter) { e.SuppressKeyPress = true; written.Focus(); } };
             personalTitle.TextChanged += (s, e) => {
                 if (populating || !PersonalEditing) return;
@@ -32,13 +33,17 @@ namespace Notewll
             };
             personalDate = BrowserLabel("A new note, just for you.", 9); personalDate.Dock = DockStyle.Fill; personalDate.Margin = Padding.Empty;
             personalBody = new Panel { Dock = DockStyle.Fill, BackColor = ThemeColors.Card, Margin = Padding.Empty };
-            var footer = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 4, RowCount = 1, Margin = Padding.Empty, BackColor = ThemeColors.Card };
+            var footer = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 5, RowCount = 1, Margin = Padding.Empty, BackColor = ThemeColors.Card };
             footer.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86)); footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86)); footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 86));
+            footer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
             personalSaveState = BrowserLabel("Saved on this device", 9); personalSaveState.Dock = DockStyle.Fill; personalSaveState.AutoEllipsis = true;
             var save = new HubButton { Text = "Save", Dock = DockStyle.Fill, AccessibleName = "Save personal note" }; save.Click += (s, e) => { saveTimer.Stop(); SaveEdits(); };
             var copyNote = new HubButton { Text = "Copy", Dock = DockStyle.Fill }; copyNote.Click += (s, e) => { try { Clipboard.SetDataObject(written.Text, true, 5, 100); } catch (Exception ex) { personalSaveState.Text = "Could not copy: " + ex.Message; } };
             var exportNote = new HubButton { Text = "Export", Dock = DockStyle.Fill }; exportNote.Click += (s, e) => ShowExportDialog();
+            var original = textVersionsButton = new HubButton { Text = "Text versions", Dock = DockStyle.Fill, AccessibleName = "View original and modified text" };
+            original.Click += (s, e) => { reviewingConversation = true; LayoutNoteEditors(); tabs.SelectedIndex = 1; };
+            footer.Controls.Add(original, 4, 0);
             footer.Controls.Add(personalSaveState, 0, 0); footer.Controls.Add(save, 1, 0); footer.Controls.Add(copyNote, 2, 0); footer.Controls.Add(exportNote, 3, 0);
             personalLayout.Controls.Add(personalTitle, 0, 0); personalLayout.Controls.Add(personalDate, 0, 1); personalLayout.Controls.Add(personalBody, 0, 2); personalLayout.Controls.Add(footer, 0, 3);
             editorHost.SizeChanged += (s, e) => LayoutNoteEditors();
@@ -57,18 +62,20 @@ namespace Notewll
                 personalSheet.Padding = new Padding(pad);
                 personalLayout.RowStyles[0].Height = (int)(60 * scale); personalLayout.RowStyles[1].Height = (int)(30 * scale); personalLayout.RowStyles[3].Height = (int)(44 * scale);
                 personalBody.Padding = new Padding(0, (int)(12 * scale), 0, (int)(12 * scale));
-                var footer = (TableLayoutPanel)personalLayout.GetControlFromPosition(0, 3); for (int i = 1; i < footer.ColumnStyles.Count; i++) footer.ColumnStyles[i].Width = (int)(80 * scale);
+                bool hasVersions = selected != null && selected.Segments.Any(segment => segment.Complete); textVersionsButton.Visible = hasVersions;
+                var footer = (TableLayoutPanel)personalLayout.GetControlFromPosition(0, 3); for (int i = 1; i < footer.ColumnStyles.Count; i++) footer.ColumnStyles[i].Width = (int)((i == 4 ? (hasVersions ? 120 : 0) : 80) * scale);
                 bool personal = PersonalEditing;
-                if (personal && written.Parent != personalBody) { personalBody.Controls.Add(written); written.Font = new Font("Segoe UI", 11); written.ReadOnly = false; }
-                else if (!personal && written.Parent != writtenOriginalHost) { writtenOriginalHost.Controls.Add(written); written.Font = Font; }
+                if (personal && written.Parent != personalBody) { personalBody.Controls.Add(written); ((ThemedTextBox)written).Cue = "Start writing..."; written.Font = new Font("Segoe UI", 11); written.ReadOnly = false; }
+                else if (!personal && written.Parent != writtenOriginalHost) { writtenOriginalHost.Controls.Add(written); ((ThemedTextBox)written).Cue = "Add your notes here..."; written.Font = Font; }
                 personalSheet.Visible = personal; reviewSheet.Visible = !personal;
-                if (personal) { personalDate.Text = selected == null ? "New personal note" : ActivityHistory.LocalDate(selected).ToString("dddd, MMMM d, yyyy 'at' HH:mm"); }
+                if (personal) { RefreshPersonalSaveState(); personalDate.Text = selected == null ? "New personal note" : ActivityHistory.LocalDate(selected).ToString("dddd, MMMM d, yyyy 'at' HH:mm"); }
             }
             finally { personalLayoutRunning = false; }
         }
         void RefreshPersonalSaveState()
         {
-            if (personalSaveState == null || selected == null) return;
+            if (personalSaveState == null) return;
+            if (selected == null) { personalSaveState.Text = "Saves automatically as you type"; return; }
             personalSaveState.Text = "Saved on this device  /  " + ActivityHistory.Words(selected) + " words";
             if (ActivityHistory.Kind(selected) == "Note" && !personalTitle.Focused)
             {

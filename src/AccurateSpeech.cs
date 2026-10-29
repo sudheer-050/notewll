@@ -10,6 +10,7 @@ namespace Notewll
     {
         public static string Transcribe(Config config, byte[] pcm)
         {
+            if (config.SpeechLanguage != "en") return SpeechQuality.Recognize(config, pcm, false).text;
             if (config.AccurateDictationEnabled) return AccurateSpeech.Transcribe(config, pcm);
             int peak = 0;
             for (int i = 0; i + 1 < pcm.Length; i += 2) peak = Math.Max(peak, Math.Abs((int)BitConverter.ToInt16(pcm, i)));
@@ -31,7 +32,7 @@ namespace Notewll
                 try
                 {
                     string script = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "engine", "accurate_worker.py");
-                    if (!File.Exists(config.QualityPython) || !File.Exists(script)) throw new SttException("Run scripts/setup_accuracy.ps1 to prepare accurate local dictation.");
+                    if (!File.Exists(config.QualityPython) || !File.Exists(script)) throw new SttException("Set up accurate speech in Preferences > Storage > Optional features, then enable it in Writing.");
                     if (worker != null && python != config.QualityPython) Stop();
                     if (worker == null || worker.HasExited)
                     {
@@ -55,7 +56,7 @@ namespace Notewll
             }
         }
         public static void Warmup(Config config) { Call(config, new { op = "warmup" }, 30000); ready = true; }
-        public static string Transcribe(Config config, byte[] pcm) { return Call(config, new { pcm = Convert.ToBase64String(pcm) }, 10000).text; }
+        public static string Transcribe(Config config, byte[] pcm) { return Call(config, new { pcm = Convert.ToBase64String(pcm) }, ready ? 10000 : 30000).text; }
         static void Stop()
         {
             ready = false;

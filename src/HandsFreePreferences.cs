@@ -59,45 +59,66 @@ namespace Notewll
                 try { if (File.Exists(MyVoiceProfile.FilePath)) File.Delete(MyVoiceProfile.FilePath); Task.Run(() => MyVoiceMatcher.Shutdown()); handsFreeStatus.Text = "Voice profile deleted. Hands-free is paused."; }
                 catch (Exception ex) { handsFreeStatus.Text = "Could not delete the profile: " + ex.Message; }
             });
-            var allowedApps = new TextBox { Left = 20, Top = 354, Width = 440, AccessibleName = "Allowed app executable names", Text = source.HandsFreeApps };
+            Label(panel, "Allowed apps", 20, 350, 630, 28, 11, true, Ink);
+            var allowedApps = new ThemedTextBox { Left = 20, Top = 394, Width = 440, AccessibleName = "Allowed app executable names", Text = source.HandsFreeApps };
             panel.Controls.Add(allowedApps);
-            Button(panel, "Save allowed apps", 470, 350, 160, (s, e) => { if (PauseHandsFree != null) PauseHandsFree(); source.HandsFreeApps = allowedApps.Text.Trim(); source.Save(); handsFreeStatus.Text = "Allowed apps saved. Start hands-free when ready."; });
-            Label(panel, "Allowed executable names, separated by commas (for example: notepad, chrome). An empty list blocks all apps. Screen lock and microphone changes pause listening.", 20, 395, 630, 60, 9, false, Muted);
-            Label(panel, "Click the listening ball or press Escape to pause immediately. Shortcut dictation and note recording pause this mode.\n\nWhile listening, anything you say may be typed. Voice matching can make mistakes; overlapping speech and recordings of your voice are not reliably excluded. Native password fields are blocked; browser password fields cannot be reliably detected.\n\nThe mic hears surrounding audio to check the speaker. Rejected audio is discarded. Enrollment audio is not saved; your voice profile is encrypted for this Windows account.", 20, 465, 630, 190, 10, false, Muted);
+            Button(panel, "Save allowed apps", 470, 390, 160, (s, e) => { if (PauseHandsFree != null) PauseHandsFree(); source.HandsFreeApps = allowedApps.Text.Trim(); source.Save(); handsFreeStatus.Text = "Allowed apps saved. Start hands-free when ready."; });
+            Label(panel, "Allowed executable names, separated by commas (for example: notepad, chrome). An empty list blocks all apps. Screen lock and microphone changes pause listening.", 20, 435, 630, 60, 9, false, Muted);
+            Label(panel, "Click the listening ball or press Escape to pause immediately. Shortcut dictation and note recording pause this mode.\n\nWhile listening, anything you say may be typed. Voice matching can make mistakes; overlapping speech and recordings of your voice are not reliably excluded. Native password fields are blocked; browser password fields cannot be reliably detected.\n\nThe mic hears surrounding audio to check the speaker. Rejected audio is discarded. Enrollment audio is not saved; your voice profile is encrypted for this Windows account.", 20, 505, 630, 190, 10, false, Muted);
         }
     }
     sealed class VoiceEnrollmentDialog : Form
     {
         public static int OpenCount;
+        internal static readonly string[] Readings = {
+            "At midnight, a tiny bookshop appeared at the end of my street.",
+            "Every book inside described a journey its reader had not yet taken.",
+            "I opened one, and a map of tomorrow unfolded across the page."
+        };
         readonly Config config; readonly List<byte[]> samples = new List<byte[]>();
-        readonly Label status = new Label { Left = 24, Top = 24, Width = 540, Height = 150 };
-        readonly Button record = new Button { Left = 24, Top = 200, Width = 260, Height = 42, Text = "Record sample 1", Enabled = false };
+        readonly bool preview;
+        readonly Label status = new Label { Left = 24, Top = 66, Width = 592, Height = 52 };
+        readonly Label passage = new Label { Left = 24, Top = 126, Width = 592, Height = 110, Padding = new Padding(14), Font = new Font("Segoe UI", 13), BackColor = ThemeColors.Card, ForeColor = ThemeColors.Ink, AccessibleName = "Passage to read aloud" };
+        readonly Button record = new HubButton { Left = 24, Top = 314, Width = 280, Height = 42, Text = "Record sample 1", Enabled = false };
         readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 100 };
         MicRecorder mic; DateTime started; bool saving, disposed;
-        public VoiceEnrollmentDialog(Config config)
+        public VoiceEnrollmentDialog(Config config, bool preview = false)
         {
-            this.config = config; OpenCount++; Text = "Enroll my voice"; ClientSize = new Size(590, 290); Font = new Font("Segoe UI", 10); StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = MinimizeBox = false;
-            var close = new Button { Left = 310, Top = 200, Width = 250, Height = 42, Text = "Cancel" }; close.Click += (s, e) => Close();
-            Controls.AddRange(new Control[] { status, record, close });
+            this.config = config; this.preview = preview; OpenCount++; Icon = AppLogo.Icon; ShowInTaskbar = false; Text = "Enroll my voice"; ClientSize = new Size(640, 380); Font = new Font("Segoe UI", 10); StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = MinimizeBox = false;
+            var title = new Label { Left = 24, Top = 20, Width = 592, Height = 36, Text = "A bookshop from tomorrow", Font = new Font("Segoe UI", 15, FontStyle.Bold) };
+            var help = new Label { Left = 24, Top = 250, Width = 592, Height = 56, Text = "Read naturally until the timer ends.\nUse a quiet room. Enrollment audio is not saved." };
+            var close = new HubButton { Left = 336, Top = 314, Width = 280, Height = 42, Text = "Cancel" }; close.Click += (s, e) => Close(); CancelButton = close;
+            Controls.AddRange(new Control[] { title, status, passage, help, record, close });
+            ThemeColors.Apply(this, config.Theme); passage.BackColor = ThemeColors.Card;
+            passage.Text = Readings[0];
             status.Text = "Preparing local voice matching... No microphone is open yet.";
-            Shown += async (s, e) => { try { await Task.Run(() => MyVoiceMatcher.Ready(config)); if (!IsDisposed) { record.Enabled = true; Prompt(); } } catch (Exception ex) { if (!IsDisposed) status.Text = ex.Message; } };
+            AutoScaleMode = AutoScaleMode.None;
+            using (var graphics = CreateGraphics()) { float scale = graphics.DpiX / 96f; if (scale != 1) Scale(new SizeF(scale, scale)); }
+            Shown += async (s, e) => { if (preview) { record.Enabled = true; Prompt(); return; } try { await Task.Run(() => MyVoiceMatcher.Ready(config)); if (!IsDisposed) { record.Enabled = true; Prompt(); } } catch (Exception ex) { if (!IsDisposed) status.Text = ex.Message; } };
             record.Click += (s, e) => {
+                if (preview) return;
                 try { mic = new MicRecorder(config.Microphone); mic.Start(); started = DateTime.UtcNow; record.Enabled = false; timer.Start(); }
                 catch (Exception ex) { if (mic != null) mic.Dispose(); mic = null; status.Text = ex.Message; }
             };
             timer.Tick += async (s, e) => {
                 if (mic == null || saving) return;
                 double seconds = (DateTime.UtcNow - started).TotalSeconds;
-                status.Text = "Recording sample " + (samples.Count + 1) + " of 3 - " + Math.Max(0, 6 - (int)seconds) + " seconds left.\nSpeak naturally. Only your voice should be in the room.";
+                status.Text = "Recording sample " + (samples.Count + 1) + " of 3 - " + Math.Max(0, 6 - (int)seconds) + " seconds left.\nKeep reading the passage below naturally.";
                 if (seconds < 6) return;
                 timer.Stop(); samples.Add(mic.Stop()); mic.Dispose(); mic = null;
                 if (samples.Count < 3) { Prompt(); record.Enabled = true; return; }
                 saving = true; status.Text = "Checking that all three samples match...";
                 try { var profile = await Task.Run(() => MyVoiceMatcher.Enroll(config, samples.ToArray())); if (!IsDisposed) { profile.Save(); DialogResult = DialogResult.OK; Close(); } }
-                catch (Exception ex) { if (!IsDisposed) { foreach (var sample in samples) Array.Clear(sample, 0, sample.Length); samples.Clear(); saving = false; record.Text = "Record sample 1"; record.Enabled = true; status.Text = ex.Message + "\nTry three new samples."; } }
+                catch (Exception ex) { if (!IsDisposed) { foreach (var sample in samples) Array.Clear(sample, 0, sample.Length); samples.Clear(); saving = false; record.Text = "Record sample 1"; record.Enabled = true; passage.Text = Readings[0]; status.Text = ex.Message + "\nTry three new samples."; } }
             };
         }
-        void Prompt() { record.Text = "Record sample " + (samples.Count + 1); status.Text = "Sample " + (samples.Count + 1) + " of 3: speak for six seconds after clicking Record.\n\n" + new[] { "Describe what you are working on today.", "Talk about a place you enjoy visiting.", "Explain what you would like to write next." }[samples.Count] + "\n\nUse your usual microphone and a quiet room. Audio stays in memory."; }
+        void Prompt() { record.Text = "Record sample " + (samples.Count + 1); passage.Text = Readings[samples.Count]; status.Text = "Sample " + (samples.Count + 1) + " of 3: read this part of the story aloud.\nClick Record when ready. Each sample lasts six seconds."; }
+        internal void PreviewSample(int index, bool recording)
+        {
+            if (!preview) throw new InvalidOperationException("Preview is available only without microphone capture.");
+            passage.Text = Readings[index]; record.Text = "Record sample " + (index + 1); record.Enabled = !recording;
+            status.Text = recording ? "Recording sample " + (index + 1) + " of 3 - 4 seconds left.\nKeep reading the passage below naturally." : "Sample " + (index + 1) + " of 3: read this part of the story aloud.\nClick Record when ready. Each sample lasts six seconds.";
+        }
         protected override void Dispose(bool disposing) { if (disposing && !disposed) { disposed = true; timer.Dispose(); if (mic != null) mic.Dispose(); foreach (var sample in samples) Array.Clear(sample, 0, sample.Length); samples.Clear(); OpenCount--; } base.Dispose(disposing); }
     }
 }

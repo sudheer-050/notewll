@@ -5,7 +5,7 @@ from pathlib import Path
 
 from test_app import ROOT
 
-SETUP = ROOT / "dist" / "Notewll-Setup-0.10.0.exe"
+SETUP = ROOT / "dist" / "Notewll-Setup-0.11.0.exe"
 
 
 def test_setup_reports_installed_size_in_rounded_up_kilobytes(tmp_path):
@@ -39,6 +39,13 @@ def test_setup_contains_the_current_accurate_worker_and_verified_detector():
     values = dict(field.split('=', 1) for field in result.stdout.split('|'))
     assert values['worker-sha256'] == hashlib.sha256((ROOT / 'engine/accurate_worker.py').read_bytes()).hexdigest()
     assert values['detector-sha256'] == hashlib.sha256((ROOT / 'assets/silero_vad.onnx').read_bytes()).hexdigest()
+
+
+def test_installed_optional_speech_setup_matches_source():
+    result = subprocess.run([str(SETUP), '--inspect-optional-speech'], capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == hashlib.sha256((ROOT / 'scripts/setup_optional_speech.ps1').read_bytes()).hexdigest()
+    assert (ROOT / 'build/engine/setup_optional_speech.ps1').read_bytes() == (ROOT / 'scripts/setup_optional_speech.ps1').read_bytes()
 
 
 def test_setup_extracts_only_native_libraries(tmp_path):

@@ -11,7 +11,42 @@ namespace Notewll
     // Local double buffering alone does not cover native scrolling of child windows.
     sealed class BufferedScrollPanel : Panel
     {
+        bool draggingScroll;
         public BufferedScrollPanel() { DoubleBuffered = true; ResizeRedraw = true; }
+        int ScrollRange { get { return AutoScroll ? Math.Max(0, DisplayRectangle.Height - ClientSize.Height) : 0; } }
+        Rectangle ScrollThumb
+        {
+            get
+            {
+                int height = ClientSize.Height, thumb = Math.Min(height, Math.Max(32, (int)((double)height * height / Math.Max(1, DisplayRectangle.Height))));
+                int top = ScrollRange == 0 ? 0 : (int)((double)(height - thumb) * -AutoScrollPosition.Y / ScrollRange);
+                return new Rectangle(Math.Max(0, ClientSize.Width - 8), top, 4, thumb);
+            }
+        }
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            using (var background = new SolidBrush(BackColor)) e.Graphics.FillRectangle(background, Math.Max(0, ClientSize.Width - 12), 0, 12, ClientSize.Height);
+            if (ScrollRange == 0) return;
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            using (var fill = new SolidBrush(ThemeColors.Muted))
+            using (var shape = Surface.Shape(ScrollThumb, 2)) e.Graphics.FillPath(fill, shape);
+        }
+        void ScrollAt(int y)
+        {
+            int thumb = ScrollThumb.Height;
+            double fraction = (y - thumb / 2.0) / Math.Max(1, ClientSize.Height - thumb);
+            AutoScrollPosition = new Point(0, (int)(Math.Max(0, Math.Min(1, fraction)) * ScrollRange));
+            RepaintViewport();
+        }
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left && ScrollRange > 0 && e.X >= ClientSize.Width - 16) { draggingScroll = Capture = true; ScrollAt(e.Y); return; }
+            base.OnMouseDown(e);
+        }
+        protected override void OnMouseMove(MouseEventArgs e) { if (draggingScroll) ScrollAt(e.Y); else base.OnMouseMove(e); }
+        protected override void OnMouseUp(MouseEventArgs e) { draggingScroll = Capture = false; base.OnMouseUp(e); }
+        protected override void OnMouseCaptureChanged(EventArgs e) { if (!Capture) draggingScroll = false; base.OnMouseCaptureChanged(e); }
         protected override CreateParams CreateParams
         {
             get { var parameters = base.CreateParams; parameters.ExStyle |= 0x02000000; return parameters; } // WS_EX_COMPOSITED
@@ -30,6 +65,7 @@ namespace Notewll
     sealed class Surface : Panel
     {
         public Color Fill = ThemeColors.Card;
+        public bool BorderVisible = true;
         public static Color CanvasColor(Control parent)
         {
             while (parent != null) { var surface = parent as Surface; if (surface != null) return surface.Fill; if (parent.BackColor.A == 255) return parent.BackColor; parent = parent.Parent; }
@@ -43,7 +79,7 @@ namespace Notewll
             using (var path = Shape(new RectangleF(0.5f, 0.5f, Width - 1, Height - 1), 18))
             using (var brush = new SolidBrush(Fill))
             using (var pen = new Pen(ThemeColors.Border))
-            { e.Graphics.FillPath(brush, path); e.Graphics.DrawPath(pen, path); }
+            { e.Graphics.FillPath(brush, path); if (BorderVisible) e.Graphics.DrawPath(pen, path); }
         }
         public static GraphicsPath Shape(RectangleF r, float radius)
         {
@@ -56,6 +92,7 @@ namespace Notewll
     sealed class HubButton : Button
     {
         public bool Primary, Selected;
+        internal string NavigationIcon;
         public HubButton()
         {
             FlatStyle = FlatStyle.Flat; FlatAppearance.BorderSize = 0;
@@ -67,14 +104,24 @@ namespace Notewll
         {
             OnPaintBackground(e);
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            Color fill = SystemInformation.HighContrast ? (Primary || Selected ? SystemColors.Highlight : SystemColors.Control) : Primary ? ThemeColors.Accent : Selected ? ThemeColors.Selected : ThemeColors.Button;
-            if (!SystemInformation.HighContrast && ClientRectangle.Contains(PointToClient(Cursor.Position))) fill = Primary ? ThemeColors.Accent : ThemeColors.Hover;
+            bool navigation = !String.IsNullOrEmpty(NavigationIcon);
+            Color fill = !Enabled ? ThemeColors.Button : SystemInformation.HighContrast ? (Primary || Selected ? SystemColors.Highlight : SystemColors.Control) : Primary ? ThemeColors.Accent : Selected ? ThemeColors.Selected : navigation ? ThemeColors.Sidebar : ThemeColors.Button;
+            if (Enabled && !SystemInformation.HighContrast && ClientRectangle.Contains(PointToClient(Cursor.Position))) fill = Primary ? (ThemeColors.Dark ? ControlPaint.Light(ThemeColors.Accent, .08f) : ControlPaint.Dark(ThemeColors.Accent, .08f)) : ThemeColors.Hover;
             using (var path = Surface.Shape(new RectangleF(0, 0, Width - 1, Height - 1), 9))
             using (var brush = new SolidBrush(fill)) e.Graphics.FillPath(brush, path);
-            TextRenderer.DrawText(e.Graphics, Text, Font, ClientRectangle,
+            var textBounds = ClientRectangle;
+            if (navigation)
+            {
+                float scale = Height / 34f;
+                int inset = (int)(16 * scale), iconWidth = (int)(20 * scale);
+                var color = SystemInformation.HighContrast && Selected ? SystemColors.HighlightText : Selected ? ThemeColors.Accent : ThemeColors.Muted;
+                using (var iconFont = new Font("Segoe MDL2 Assets", 11)) TextRenderer.DrawText(e.Graphics, NavigationIcon, iconFont, new Rectangle(inset, 0, iconWidth, Height), color, TextFormatFlags.VerticalCenter | TextFormatFlags.HorizontalCenter | TextFormatFlags.NoPadding);
+                textBounds = new Rectangle((int)(48 * scale), 0, Math.Max(1, Width - (int)(56 * scale)), Height);
+            }
+            TextRenderer.DrawText(e.Graphics, Text, Font, textBounds,
                 SystemInformation.HighContrast ? (Primary || Selected ? SystemColors.HighlightText : SystemColors.ControlText) : !Enabled ? ThemeColors.Muted : Primary ? ThemeColors.AccentInk : ThemeColors.Ink,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
-            if (Focused) ControlPaint.DrawFocusRectangle(e.Graphics, Rectangle.Inflate(ClientRectangle, -4, -4));
+                (navigation ? TextFormatFlags.Left : TextFormatFlags.HorizontalCenter) | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+            if (Focused) using (var focusPath = Surface.Shape(new RectangleF(4, 4, Math.Max(1, Width - 9), Math.Max(1, Height - 9)), 6)) using (var focusPen = new Pen(Primary ? ThemeColors.AccentInk : ThemeColors.Accent) { DashStyle = DashStyle.Dot }) e.Graphics.DrawPath(focusPen, focusPath);
         }
     }
 
@@ -86,6 +133,7 @@ namespace Notewll
         static Color Muted { get { return ThemeColors.Muted; } }
         static Color Paper { get { return ThemeColors.Paper; } }
         Config source;
+        bool buildingHub = true;
         readonly Panel host = new Panel { Dock = DockStyle.Fill, BackColor = Paper };
         readonly Panel sidebar = new Panel { Name = "AppSidebar", Dock = DockStyle.Left, Width = 194, BackColor = ThemeColors.Sidebar };
         readonly Panel[] pages = new Panel[8];
@@ -94,10 +142,10 @@ namespace Notewll
         readonly HubButton savePinned = new HubButton { Text = "Save preferences", Primary = true, Left = 18, Width = 158, Height = 38, Visible = false };
         readonly Label sidebarStatus = new Label { Left = 20, Width = 154, Height = 44, Visible = false, Font = new Font("Segoe UI", 8), ForeColor = Color.FromArgb(61, 115, 90), AutoEllipsis = true };
         readonly System.Collections.Generic.HashSet<int> capturedKeys = new System.Collections.Generic.HashSet<int>();
-        string selectedShortcut;
-        readonly ComboBox noteShortcut = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
-        readonly ComboBox noteSource = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
-        readonly ComboBox meetingSource = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
+        string selectedShortcut, selectedNoteShortcut, selectedMeetingShortcut;
+        readonly HubButton noteShortcut = new HubButton { AccessibleName = "Set Note shortcut" }, meetingShortcut = new HubButton { AccessibleName = "Set Meeting shortcut" };
+        readonly ComboBox noteSource = new ThemedComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
+        readonly ComboBox meetingSource = new ThemedComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
         HubButton captureTarget;
         NotesPane notes;
         public void ToggleNote(string mode) { if (notes != null) notes.Toggle(mode); }
@@ -107,9 +155,12 @@ namespace Notewll
         public string PreferredNoteSource { get { return notes == null ? source.NotesSource : notes.Source; } }
         public bool IsNoteRecording { get { return notes != null && notes.Recording; } }
         public int NoteSoundLevel { get { return notes == null ? 0 : notes.SoundLevel; } }
+        public bool IsPracticeListening { get { return testRecorder != null; } }
+        public void StopLocalPractice() { FinishPractice(); }
         public string NoteMode { get { return notes == null ? "" : notes.RecordingMode; } }
         public bool IsCapturingShortcut { get; private set; }
         public void BeginShortcutCapture() { BeginShortcutCapture(hotkey); }
+        internal void BeginShortcutCapture(string action) { BeginShortcutCapture(action == "Note" ? noteShortcut : action == "Meeting" ? meetingShortcut : hotkey); }
         void BeginShortcutCapture(HubButton button)
         {
             if (IsTesting || (CanTest != null && !CanTest())) return;
@@ -124,39 +175,44 @@ namespace Notewll
             if (down) { capturedKeys.Add(Shortcut.Normalize(key)); captureTarget.Text = Shortcut.Format(capturedKeys); captureTarget.Invalidate(); }
             else if (capturedKeys.Count > 0)
             {
-                try { string value = Shortcut.Format(Shortcut.Parse(Shortcut.Format(capturedKeys))); selectedShortcut = value; MarkDirty(); EndShortcutCapture(); saved.Text = "Shortcut captured. Save preferences to apply it."; }
+                try { string value = Shortcut.Format(Shortcut.Parse(Shortcut.Format(capturedKeys))); if (captureTarget == noteShortcut) selectedNoteShortcut = value; else if (captureTarget == meetingShortcut) selectedMeetingShortcut = value; else selectedShortcut = value; MarkDirty(); EndShortcutCapture(); saved.Text = "Shortcut captured. Save preferences to apply it."; }
                 catch (Exception ex) { saved.Text = ex.Message; }
             }
         }
-        void EndShortcutCapture() { IsCapturingShortcut = false; if (captureTarget == null) return; captureTarget.Text = selectedShortcut; captureTarget.Primary = false; captureTarget.Invalidate(); }
+        static string ShortcutCaption(string value) { return String.IsNullOrWhiteSpace(value) ? "Add shortcut" : "Change shortcut: " + value.Replace("+", " + "); }
+        void EndShortcutCapture() { IsCapturingShortcut = false; if (captureTarget == null) return; captureTarget.Text = ShortcutCaption(captureTarget == noteShortcut ? selectedNoteShortcut : captureTarget == meetingShortcut ? selectedMeetingShortcut : selectedShortcut); captureTarget.Primary = false; captureTarget.Invalidate(); }
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
             if (IsCapturingShortcut) return true;
             return base.ProcessCmdKey(ref msg, keyData);
         }
-        readonly ComboBox mic = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
-        readonly ProgressBar meter = new ProgressBar { Maximum = 100, Style = ProgressBarStyle.Continuous };
-        readonly Label micStatus = new Label(), sttStatus = new Label(), saved = new Label(), homeLatest = new Label(), homeShortcut = new Label(), homeMicrophone = new Label();
-        readonly CheckBox quality = new CheckBox { Text = "Enhanced local notes and meeting voices", AutoSize = true };
-        readonly CheckBox accurateMode = new CheckBox { Text = "Accurate local dictation and speech detection", AutoSize = true };
-        readonly CheckBox cleanup = new CheckBox { Text = "Clean up filler words and spoken corrections", AutoSize = true };
-        readonly CheckBox autoPaste = new CheckBox { Text = "Insert text into the app I was using", AutoSize = true };
-        readonly CheckBox liveWriting = new CheckBox { Text = "Write live, then refine when I release the shortcut", AutoSize = true };
-        readonly ComboBox pasteMethod = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
-        readonly CheckBox startup = new CheckBox { Text = "Keep the toolbar ready when I sign in", AutoSize = true };
-        readonly TextBox raw = new TextBox { Multiline = true, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None };
-        readonly TextBox cleaned = new TextBox { Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None };
-        readonly HubButton testMic = new HubButton { Text = "Test microphone" }, transcribe = new HubButton { Text = "Record a sentence", Primary = true }, testStt = new HubButton { Text = "Check connection" }, copy = new HubButton { Text = "Copy text" };
+        readonly ComboBox mic = new ThemedComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
+        readonly ProgressBar meter = new ThemedProgressBar { Maximum = 100, Style = ProgressBarStyle.Continuous };
+        readonly Label micStatus = new Label(), sttStatus = new Label(), saved = new Label(), homeLatest = new Label(), homeMicrophone = new Label();
+        readonly CheckBox quality = new ThemedCheckBox { Text = "Enhanced local notes and meeting voices", AutoSize = true };
+        readonly CheckBox accurateMode = new ThemedCheckBox { Text = "Accurate local dictation and speech detection", AutoSize = true };
+        readonly CheckBox cleanup = new ThemedCheckBox { Text = "Clean up filler words and spoken corrections", AutoSize = true };
+        readonly CheckBox autoPaste = new ThemedCheckBox { Text = "Insert text into the app I was using", AutoSize = true };
+        readonly CheckBox liveWriting = new ThemedCheckBox { Text = "Write live, then refine when I release the shortcut", AutoSize = true };
+        readonly ComboBox pasteMethod = new ThemedComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
+        readonly CheckBox startup = new ThemedCheckBox { Text = "Keep the toolbar ready when I sign in", AutoSize = true };
+        readonly TextBox raw = new ThemedTextBox { Multiline = true, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None };
+        readonly TextBox cleaned = new ThemedTextBox { Multiline = true, ReadOnly = false, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.None };
+        readonly HubButton testMic = new HubButton { Text = "Test microphone" }, transcribe = new HubButton { Text = "Start dictation", Primary = true }, testStt = new HubButton { Text = "Check connection" }, copy = new HubButton { Text = "Copy text" };
         readonly System.Windows.Forms.Timer poll = new System.Windows.Forms.Timer { Interval = 60 };
         MicRecorder testRecorder;
         DateTime testEnds;
+        DateTime nextPracticePreview;
+        LiveRecognition practiceLive;
+        int practiceLiveBusy;
+        string practiceRawPrefix = "", practiceCleanPrefix = "";
         bool testTranscribes, checking, transcribing;
         float uiScale = 1;
         Label localFooter, privacyFooter, rawHeading, cleanedHeading;
         public bool CloseToTray;
         public Action<Config> OnSaved;
         public Func<bool> CanTest;
-        public bool IsTesting { get { return VoiceEnrollmentDialog.OpenCount > 0 || VoiceWordDialog.OpenCount > 0 || testRecorder != null || transcribing || (notes != null && notes.Busy); } }
+        public bool IsTesting { get { return LocalCommandDialog.OpenCount > 0 || VoiceEnrollmentDialog.OpenCount > 0 || VoiceWordDialog.OpenCount > 0 || testRecorder != null || transcribing || (notes != null && notes.Busy); } }
         public Config Result { get; private set; }
         public string CurrentPage { get; private set; }
         public string Summary { get { return "mics=" + String.Join(";", mic.Items.Cast<object>().Select(i => i.ToString())) + "|selected=" + mic.SelectedItem + "|cleanup=" + cleanup.Checked + "|autoPaste=" + autoPaste.Checked + "|startup=" + startup.Checked + "|preview=" + cleaned.Text; } }
@@ -174,34 +230,36 @@ namespace Notewll
             for (int i = 0; i < names.Length; i++)
             {
                 int at = i;
-                navigation[i] = new HubButton { Text = names[i] == "Playground" ? "Practice" : names[i], Left = 18, Top = 128 + new[] { 0, 0, 5, 6, 1, 2, 3, 4 }[i] * 40, Width = 158, Height = 34, AccessibleName = names[i] };
+                navigation[i] = new HubButton { Text = names[i] == "Playground" ? "Practice" : names[i] == "Notes" ? "History" : names[i], NavigationIcon = new[] { "\uE80F", "\uE768", "\uE713", "\uE897", "\uE8A5", "\uE82D", "\uE8C8", "\uE8D2" }[i], Left = 18, Top = 128 + new[] { 0, 0, 5, 6, 1, 2, 3, 4 }[i] * 40, Width = 158, Height = 34, AccessibleName = names[i] };
                 navigation[i].Click += (s, e) => ShowPage(names[at]); navigation[i].Visible = i != 1; sidebar.Controls.Add(navigation[i]);
                 pages[i] = new BufferedScrollPanel { Dock = DockStyle.Fill, BackColor = Paper, AutoScroll = true, Visible = false, Name = names[i] }; host.Controls.Add(pages[i]);
             }
             localFooter = Label(sidebar, "●  On your device", 20, 650, 160, 23, 9, false, Color.FromArgb(61, 115, 90));
             privacyFooter = Label(sidebar, "Private by design\nNotes saved locally", 20, 678, 165, 42, 9, false, Muted);
             sidebar.Resize += (s, e) => LayoutFooter();
-            selectedShortcut = config.Hotkey; hotkey.Text = selectedShortcut;
+            selectedShortcut = config.Hotkey; hotkey.Text = ShortcutCaption(selectedShortcut);
             hotkey.Click += (s, e) => BeginShortcutCapture();
+            hotkey.AccessibleName = "Set Dictate shortcut";
+            selectedNoteShortcut = config.NotesHotkey; noteShortcut.Text = ShortcutCaption(selectedNoteShortcut); noteShortcut.Click += (s, e) => BeginShortcutCapture(noteShortcut);
+            selectedMeetingShortcut = config.MeetingHotkey; meetingShortcut.Text = ShortcutCaption(selectedMeetingShortcut); meetingShortcut.Click += (s, e) => BeginShortcutCapture(meetingShortcut);
             Deactivate += (s, e) => { if (IsCapturingShortcut) EndShortcutCapture(); };
             mic.Items.Add("Windows default microphone"); foreach (var name in Mics.List()) mic.Items.Add(name);
             int selected = mic.Items.IndexOf(config.Microphone); mic.SelectedIndex = selected > 0 ? selected : 0;
             liveWriting.Checked = config.LiveWriting; pasteMethod.Items.AddRange(new object[] { "Automatic (includes terminals)", "Ctrl+V", "Ctrl+Shift+V", "Shift+Insert" }); pasteMethod.SelectedIndex = Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, config.PasteMethod);
             quality.Checked = config.QualityEnabled; accurateMode.Checked = config.AccurateDictationEnabled; cleanup.Checked = config.CleanupEnabled; autoPaste.Checked = config.AutoPaste; startup.Checked = config.StartWithWindows;
-            noteShortcut.Items.AddRange(new object[] { "Ctrl+Shift+N", "Ctrl+Shift+Space", "Ctrl+Alt+N", "F9", "F10", "F11", "F12" });
-            if (!noteShortcut.Items.Contains(config.NotesHotkey)) noteShortcut.Items.Add(config.NotesHotkey); noteShortcut.SelectedItem = config.NotesHotkey;
-            noteSource.Items.AddRange(new object[] { "My microphone", "Computer audio", "Microphone + computer" }); noteSource.SelectedIndex = Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, config.NotesSource);
-            meetingSource.Items.AddRange(new object[] { "My microphone", "Computer audio", "Microphone + computer" }); meetingSource.SelectedIndex = Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, config.MeetingSource);
+            noteSource.Items.Add("My microphone"); noteSource.SelectedIndex = 0;
+            meetingSource.Items.AddRange(new object[] { "Computer audio", "Microphone + computer" }); meetingSource.SelectedIndex = config.MeetingSource == "Computer" ? 0 : 1;
             BuildHome(); BuildPlayground(); BuildPreferences(); BuildHelp(); BuildLibraryPage(5, "Word"); BuildLibraryPage(6, "Snippet"); BuildStylePage();
             notes = new NotesPane(config, noteStore) { Left = 40, Top = 18, Width = 760, Height = 700 };
-            notes.CanStart = () => VoiceEnrollmentDialog.OpenCount == 0 && testRecorder == null && !transcribing && !IsCapturingShortcut && (CanTest == null || CanTest()); pages[4].Controls.Add(notes);
+            notes.CanStart = () => LocalCommandDialog.OpenCount == 0 && VoiceEnrollmentDialog.OpenCount == 0 && testRecorder == null && !transcribing && !IsCapturingShortcut && (CanTest == null || CanTest()); pages[4].Controls.Add(notes);
             notes.ClearHistory = ClearActivity;
-            notes.SourceChanged = value => noteSource.SelectedIndex = Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, value);
+            notes.SourceChanged = value => noteSource.SelectedIndex = 0;
             var notesHandle = notes.Handle;
+            cleaned.TextChanged += (s, e) => { copy.Enabled = cleaned.TextLength > 0; if (cleaned.Focused) OfferCorrection(raw.Text, cleaned.Text); };
             raw.TextChanged += (s, e) => RefreshCleaned(); cleanup.CheckedChanged += (s, e) => RefreshCleaned();
             testMic.Click += (s, e) => StartTest(false); transcribe.Click += (s, e) => StartTest(true); testStt.Click += (s, e) => CheckStt(); poll.Tick += (s, e) => PollTest();
             copy.Click += (s, e) => { if (cleaned.Text.Length > 0) { try { Clipboard.SetDataObject(cleaned.Text, true, 5, 100); copy.Text = "Copied"; } catch (Exception ex) { sttStatus.Text = "Could not copy: " + ex.Message; } } };
-            UpdateTranscript(lastRaw, lastCleaned); RefreshHome(); ShowPage("Home");
+            UpdateTranscript(lastRaw, lastCleaned); ShowPage("Home");
             FormClosing += (s, e) => { if (!ConfirmUnsaved()) { e.Cancel = true; return; } StopTest(); if (CloseToTray && e.CloseReason == CloseReason.UserClosing) { e.Cancel = true; Hide(); } };
             Microsoft.Win32.SystemEvents.UserPreferenceChanged += SystemThemeChanged;
             foreach (var page in pages) foreach (Control control in page.Controls) control.Tag = control.Bounds;
@@ -212,13 +270,14 @@ namespace Notewll
                 if (uiScale != 1) Scale(new SizeF(uiScale, uiScale));
             }
             foreach (var page in pages) page.Resize += (s, e) => LayoutPage((Panel)s);
-            LayoutFooter(); ShowPage("Home"); ThemeColors.Apply(this, source.Theme); WireDirtyState();
+            LayoutFooter(); ShowPage("Home"); ThemeColors.Apply(this, source.Theme); WireDirtyState(); RefreshHome(); buildingHub = false;
             Shown += (sender, args) => BeginInvoke((Action)(() => { LayoutFooter(); foreach (var page in pages) if (page.Visible) LayoutPage(page); }));
         }
 
         static Label Label(Control parent, string text, int x, int y, int w, int h, float size, bool bold, Color color)
         {
             var label = new Label { UseCompatibleTextRendering = true, Text = text, Left = x, Top = y, Width = w, Height = h, BackColor = parent is Surface ? ((Surface)parent).Fill : parent.BackColor, ForeColor = color, Font = new Font("Segoe UI", size, bold ? FontStyle.Bold : FontStyle.Regular) };
+            if (w >= 600) label.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             parent.Controls.Add(label); return label;
         }
         static HubButton Button(Control parent, string text, int x, int y, int w, EventHandler click, bool primary = false)
@@ -228,13 +287,19 @@ namespace Notewll
         void Brand(Control parent)
         {
             var icon = new Panel { Left = 22, Top = 34, Width = 36, Height = 36, BackColor = Color.Transparent };
-            icon.Paint += (s, e) => { e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic; e.Graphics.DrawImage(AppLogo.Image, icon.ClientRectangle); };
-            parent.Controls.Add(icon); Label(parent, "Notewll", 68, 31, 112, 50, 12, true, Ink);
+            icon.Paint += (s, e) => {
+                var g = e.Graphics; g.SmoothingMode = SmoothingMode.AntiAlias;
+                using (var fill = new SolidBrush(ThemeColors.Accent)) g.FillEllipse(fill, 0, 0, icon.Width - 1, icon.Height - 1);
+                using (var ink = new SolidBrush(ThemeColors.AccentInk)) for (int dot = 0; dot < 4; dot++) g.FillEllipse(ink, icon.Width * (.28f + dot * .12f) - icon.Width * .035f, icon.Height * .465f, icon.Width * .07f, icon.Height * .07f);
+            };
+            parent.Controls.Add(icon);
+            var name = Label(parent, "Notewll", 68, icon.Top, 112, icon.Height, 12, true, Ink);
+            name.TextAlign = ContentAlignment.MiddleLeft;
             Label(parent, "PRIVATE. OFFLINE.", 22, 99, 160, 20, 8, true, Muted);
         }
         void Heading(Panel page, string title, string subtitle)
         {
-            Label(page, title, 40, 18, 700, 32, 18, false, Ink);
+            Label(page, title, 40, 18, 700, 36, 18, false, Ink);
             Label(page, subtitle, 42, 56, 700, 28, 9, false, Muted);
         }
         Surface Card(Panel page, int top, int height)
@@ -247,17 +312,29 @@ namespace Notewll
             var p = pages[0];
             homeWelcome = Label(p, "Make room for more.", 40, 18, 730, 34, 18, true, Ink);
             homeWelcomeDetail = Label(p, "Dictate into your apps and see how much time your voice gives back.", 42, 58, 730, 28, 9, false, Muted);
-            var actions = Card(p, 100, 120); homeActions = actions;
-            Label(actions, "What's on your mind?", 22, 10, 330, 28, 13, true, Ink);
-            homeShortcut.SetBounds(22, 40, 700, 26); homeShortcut.ForeColor = Muted; actions.Controls.Add(homeShortcut);
-            Button(actions, "Dictate", 22, 50, 166, (s, e) => { if (BeginDictation != null) BeginDictation(); else ShowPage("Playground"); }, true);
-            Button(actions, "New note", 204, 50, 166, (s, e) => { ShowPage("Notes"); notes.NewWrittenNote(); });
-            Button(actions, "Record meeting", 386, 50, 180, (s, e) => { ShowPage("Notes"); notes.Toggle(source.MeetingSource, "Meeting"); });
-            readinessStatus = Label(p, "Speech engine: checking availability...", 42, 232, 720, 24, 9, false, Muted);
+            var actions = Card(p, 100, 64); homeActions = actions;
+            Label(actions, "What's on your mind?", 22, 18, 470, 28, 13, true, Ink);
+            var create = Button(actions, "Create \u25be", 606, 13, 132, (s, e) => {
+                var button = (Control)s; var menu = BuildHomeCreateMenu();
+                menu.Show(button, new Point(button.Width, button.Height), ToolStripDropDownDirection.BelowLeft);
+            }, true);
+            create.AccessibleName = "Create";
+            readinessStatus = Label(p, "Speech engine: checking availability...", 42, 176, 720, 24, 9, false, Muted);
             BuildActivityHome(p); BuildSpeakingProgress(p);
             string detail; SetReadiness(SpeechEngine.Healthy(source, out detail) ? "Ready - English speech stays on this device." : detail);
         }
+        internal ContextMenuStrip BuildHomeCreateMenu()
+        {
+            var menu = DialogUi.PopupMenu();
+            menu.Items.Add("Dictate", null, (s, e) => BeginLocalPractice());
+            menu.Items.Add("Note", null, (s, e) => { ShowPage("Notes"); notes.NewVoiceNote(); });
+            menu.Items.Add("Meeting", null, (s, e) => { ShowPage("Notes"); notes.RecordOnlineMeeting(); });
+            menu.Items.Add("Conversation", null, (s, e) => { ShowPage("Notes"); notes.NewConversation(); });
+            foreach (ToolStripItem item in menu.Items) item.Enabled = !IsTesting;
+            return menu;
+        }
         void BuildPlayground() { BuildHomePractice(); }
+        public void BeginLocalPractice() { ShowPage("Playground"); StartTest(true); }
         void BuildPreferences() { BuildOrganizedPreferences(); }
         void BuildHelp()
         {
@@ -278,9 +355,9 @@ namespace Notewll
             bool openPractice = name == "Playground" || name == "Practice";
             if (openPractice) name = "Home";
             for (int i = 0; i < pages.Length; i++) { bool active = pages[i].Name == name; pages[i].Visible = active; navigation[i].Selected = active; navigation[i].Invalidate(); if (active) pages[i].BringToFront(); }
-            if (name == "Home" && notes != null) RefreshHome();
+            if (name == "Home" && notes != null && !buildingHub) RefreshHome();
             if (name == "Notes" && notes != null && !notes.Busy) notes.ShowLibrary();
-            CurrentPage = name; savePinned.Visible = sidebarStatus.Visible = (name == "Preferences" || name == "Dictionary" || name == "Snippets" || name == "Style");
+            CurrentPage = name; savePinned.Visible = sidebarStatus.Visible = (name == "Preferences" || name == "Style");
             if (refreshLibrary != null) refreshLibrary();
             host.PerformLayout(); foreach (var page in pages) if (page.Visible) { page.AutoScrollPosition = Point.Empty; LayoutPage(page); }
             if (openPractice) SetHomePractice(true, true);
@@ -316,6 +393,7 @@ namespace Notewll
             {
                 card.Width = Math.Max((int)(600 * uiScale), page.ClientSize.Width - (int)(80 * uiScale));
                 foreach (var button in card.Controls.OfType<HubButton>().Where(b => (b.Anchor & AnchorStyles.Right) != 0)) button.Left = card.Width - button.Width - (int)(24 * uiScale);
+                foreach (var label in card.Controls.OfType<Label>().Where(label => (label.Anchor & AnchorStyles.Right) != 0)) label.Width = Math.Max(1, card.ClientSize.Width - label.Left - (int)(22 * uiScale));
                 foreach (var child in card.Controls.OfType<Surface>()) child.Left = card.Width - child.Width - (int)(34 * uiScale);
             }
             if (page == pages[0]) { LayoutActivity(); LayoutHomePractice(); }
@@ -329,54 +407,76 @@ namespace Notewll
         public void UpdateLiveTranscript(string text) { raw.Text = text ?? ""; cleaned.Text = text ?? ""; homeLatest.Text = text ?? ""; }
         public void UpdateTranscript(string text, string result)
         {
-            raw.Text = text ?? ""; RefreshCleaned();
+            correctionSuggestion = null; raw.Text = text ?? ""; RefreshCleaned();
             if (!String.IsNullOrEmpty(result)) { cleaned.Text = result; copy.Enabled = cleaned.Text.Length > 0; }
             if (homeLatest.Parent != null) homeLatest.Parent.Visible = true;
             homeLatest.Text = String.IsNullOrWhiteSpace(cleaned.Text) ? "Recent notes open with a double-click. Dictation audio is not stored." : cleaned.Text;
         }
         void RefreshCleaned() { var draft = PracticeConfig(); cleaned.Text = WritingFormat.Compose(draft, raw.Text); copy.Enabled = cleaned.Text.Length > 0; copy.Text = "Copy text"; }
-        void RefreshHome() { RefreshActivity(); homeShortcut.Text = "Hold " + source.Hotkey.Replace("+", " + ") + " to dictate"; homeShortcut.Font = new Font("Segoe UI", 10, FontStyle.Italic); homeMicrophone.Text = source.Microphone == Config.DefaultMic ? "Windows default microphone" : source.Microphone; }
+        void RefreshHome() { RefreshActivity(); homeMicrophone.Text = source.Microphone == Config.DefaultMic ? "Windows default microphone" : source.Microphone; }
         public void SavePreferences()
         {
             try
             {
                 if (IsCapturingShortcut) throw new InvalidOperationException("Release your shortcut keys first.");
-                Result = source.Copy(); Result.Hotkey = selectedShortcut; Result.NotesHotkey = Convert.ToString(noteShortcut.SelectedItem);
-                Result.NotesSource = new[] { "Microphone", "Computer", "Both" }[noteSource.SelectedIndex]; Result.MeetingSource = new[] { "Microphone", "Computer", "Both" }[meetingSource.SelectedIndex];
+                Result = source.Copy(); Result.Hotkey = selectedShortcut; Result.NotesHotkey = selectedNoteShortcut; Result.MeetingHotkey = selectedMeetingShortcut;
+                Result.NotesSource = "Microphone"; Result.MeetingSource = new[] { "Computer", "Both" }[meetingSource.SelectedIndex];
                 Result.QualityEnabled = quality.Checked; Result.AccurateDictationEnabled = accurateMode.Checked; Result.Microphone = SelectedMic(); Result.SmartCleanupEnabled = false; Result.CleanupEnabled = cleanup.Checked; Result.AutoPaste = autoPaste.Checked; Result.LiveWriting = liveWriting.Checked;
                 Result.PasteMethod = new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }[pasteMethod.SelectedIndex]; Result.StartWithWindows = startup.Checked;
                 Result.UpdateManifestUrl = updateUrl.Text.Trim(); Result.UpdatePublisherThumbprint = updatePublisher.Text.Replace(" ", "").Trim();
                 Result.CheckUpdatesOnStart = updateOnStart.Checked; Result.WritingStyle = writingStyle.Text;
-                Result.Personalization = pendingRules; Result.Theme = "System"; Result.ShowToolbar = toolbarChoice.Checked; Result.ShowVoiceIndicator = indicatorChoice.Checked; Result.ReducedMotion = motionChoice.Checked; Result.ReduceNoise = noiseChoice.Checked;
+                Result.MeetingReminders = meetingReminders.Checked; Result.RichSnippetPaste = richSnippetPaste.Checked;
+                Result.SpeechLanguage = SpeechLanguages.Codes[speechLanguage.SelectedIndex];
+                if (Result.SpeechLanguage != "en" && !SpeechLanguages.Ready(Result)) throw new InvalidOperationException("Install multilingual speech in Storage > Optional features before selecting this language.");
+                Result.CleanupLevel = correctionMode.SelectedIndex == 2 ? "Light" : "Standard"; Result.AppStylesEnabled = appStyles.Checked; Result.AppWritingStyles = appStyleDraft;
+                Result.Personalization = pendingRules; Result.Theme = Convert.ToString(themeChoice.SelectedItem); Result.ShowToolbar = toolbarChoice.Checked; Result.ShowVoiceIndicator = indicatorChoice.Checked; Result.ReducedMotion = motionChoice.Checked; Result.ReduceNoise = noiseChoice.Checked;
                 var ballDraft=BallDraft(); Result.BallAppearance=ballDraft.BallAppearance; Result.BallGravity=ballDraft.BallGravity;
                 Result.BallColorMode=ballDraft.BallColorMode; Result.BallColor1=ballDraft.BallColor1; Result.BallColor2=ballDraft.BallColor2; Result.BallGradientAngle=ballDraft.BallGradientAngle;
                 Result.BallSizePercent=ballDraft.BallSizePercent; Result.BallExpandedSizePercent=ballDraft.BallExpandedSizePercent; Result.BallImagePath=ballDraft.BallImagePath;
-                Result.Validate(); string warning = Shortcut.Warning(Result.Hotkey, Result.NotesHotkey); if (warning != null && MessageBox.Show(this, warning + "\nSave this shortcut anyway?", "Shortcut warning", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return; if (OnSaved != null) OnSaved(Result); source = Result; dirty = false; savePinned.Text = "Save preferences"; ThemeColors.Apply(this, source.Theme); if (notes != null) notes.UpdateConfig(Result); RefreshHome(); saved.Text = "Saved. Your next dictation uses these preferences.";
+                Result.Validate(); string warning = Shortcut.Warning(Result.Hotkey, Result.NotesHotkey) ?? Shortcut.Warning(Result.NotesHotkey, Result.MeetingHotkey) ?? Shortcut.Warning(Result.MeetingHotkey, Result.Hotkey); if (warning != null && MessageBox.Show(this, warning + "\nSave these shortcuts anyway?", "Shortcut warning", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes) return; if (OnSaved != null) OnSaved(Result); source = Result; dirty = false; savePinned.Text = "Save preferences"; ThemeColors.Apply(this, source.Theme); if (notes != null) notes.UpdateConfig(Result); RefreshHome(); saved.Text = "Saved. Your next dictation uses these preferences.";
             }
             catch (Exception ex) { saved.Text = "Could not save: " + ex.Message; }
             sidebarStatus.Text = saved.Text;
         }
         string SelectedMic() { return mic.SelectedIndex <= 0 ? Config.DefaultMic : mic.SelectedItem.ToString(); }
         int practiceGeneration;
+        static string ContinueDraft(string previous, string next)
+        {
+            previous = (previous ?? "").TrimEnd(); next = (next ?? "").Trim();
+            return previous.Length == 0 ? next : next.Length == 0 ? previous : previous + Environment.NewLine + next;
+        }
         void StartTest(bool andTranscribe)
         {
             if (testRecorder != null && testTranscribes && andTranscribe) { FinishPractice(); return; }
             if (transcribing || (CanTest != null && !CanTest())) { sttStatus.Text = "Finish your current dictation before testing."; return; }
             StopTest();
             try { testRecorder = new MicRecorder(SelectedMic()); testRecorder.Start(); }
-            catch (Exception ex) { micStatus.Text = "Microphone unavailable. Choose a device and check Windows microphone permission. " + ex.Message; sttStatus.Text = micStatus.Text; return; }
-            testTranscribes = andTranscribe; testEnds = DateTime.UtcNow.AddSeconds(andTranscribe ? 60 : 3);
-            sttStatus.Text = andTranscribe ? "Speak a sentence, then click Stop and review. Maximum: one minute." : "Checking microphone activity..."; micStatus.Text = "Listening...";
-            testMic.Enabled = false; transcribe.Enabled = andTranscribe; transcribe.Text = andTranscribe ? "Stop and review" : "Checking..."; poll.Start();
+            catch (Exception ex) { if (testRecorder != null) testRecorder.Dispose(); testRecorder = null; micStatus.Text = "Microphone unavailable. Choose a device and check Windows microphone permission. " + ex.Message; sttStatus.Text = micStatus.Text; return; }
+            testTranscribes = andTranscribe; testEnds = DateTime.UtcNow.AddSeconds(andTranscribe ? 300 : 3);
+            if (andTranscribe) { practiceRawPrefix = raw.Text.TrimEnd(); practiceCleanPrefix = cleaned.Text.TrimEnd(); practiceLive = new LiveRecognition(); nextPracticePreview = DateTime.UtcNow; raw.ReadOnly = true; }
+            sttStatus.Text = andTranscribe ? "Recording in Notewll. Click Stop & review when done (five-minute limit)." : "Checking microphone activity..."; micStatus.Text = "Listening...";
+            testMic.Enabled = false; transcribe.Enabled = andTranscribe; transcribe.Text = andTranscribe ? "Stop & review" : "Checking..."; poll.Start();
         }
         void StopTest()
         {
-            practiceGeneration++; transcribing = false; poll.Stop(); testMic.Enabled = transcribe.Enabled = true; transcribe.Text = "Record a sentence"; meter.Value = 0;
+            practiceGeneration++; transcribing = false; poll.Stop(); testMic.Enabled = transcribe.Enabled = true; transcribe.Text = "Start dictation"; meter.Value = 0; raw.ReadOnly = false;
+            if (practiceLive != null) { practiceLive.Dispose(); practiceLive = null; }
             if (testRecorder != null) { testRecorder.Dispose(); testRecorder = null; }
         }
         void PollTest()
         {
             if (testRecorder == null) return; meter.Value = Math.Min(100, testRecorder.Level * 100 / 12000);
+            if (testTranscribes && practiceLive != null && DateTime.UtcNow >= nextPracticePreview && testRecorder.Peak >= 150 && System.Threading.Interlocked.CompareExchange(ref practiceLiveBusy, 1, 0) == 0)
+            {
+                nextPracticePreview = DateTime.UtcNow.AddMilliseconds(500);
+                byte[] pcm = testRecorder.Snapshot(); int peak = testRecorder.Peak, gen = practiceGeneration; var recognizer = practiceLive;
+                ThreadPool.QueueUserWorkItem(_ =>
+                {
+                    try { string draft = recognizer.Snapshot(pcm, peak, false); Post(() => { if (gen != practiceGeneration || testRecorder == null || !testTranscribes || String.IsNullOrWhiteSpace(draft)) return; raw.Text = ContinueDraft(practiceRawPrefix, draft); sttStatus.Text = "Live draft. Click Stop & review for the final text."; }); }
+                    catch { } // Final transcription still uses the complete audio after Stop.
+                    finally { System.Threading.Interlocked.Exchange(ref practiceLiveBusy, 0); }
+                });
+            }
             if (DateTime.UtcNow >= testEnds) FinishPractice();
         }
         void FinishPractice()
@@ -390,19 +490,20 @@ namespace Notewll
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 string text = null, corrected = null, error = null; try { text = DictationSpeech.Transcribe(cfg, pcm); corrected = SmartCleanup.Complete(cfg, text, 8500); } catch (Exception ex) { error = ex.Message; } finally { Array.Clear(pcm, 0, pcm.Length); }
-                Post(() => { if (gen != practiceGeneration) return; transcribing = false; testMic.Enabled = transcribe.Enabled = true; transcribe.Text = "Record a sentence";
-                    if (error != null) { sttStatus.Text = error; return; } UpdateTranscript(text, corrected); source.SetupSpeechVerified = !String.IsNullOrWhiteSpace(text); if (CloseToTray) try { source.Save(); } catch (Exception ex) { sttStatus.Text = "Practice succeeded, but setup status could not be saved: " + ex.Message; return; }
-                    sttStatus.Text = source.SetupSpeechVerified ? (SmartCleanup.Enabled(cfg) ? SmartCleanup.Status : "Sentence recognized using the selected correction mode. Compare both versions below.") : "No words recognized. Try a clear sentence.";
+                Post(() => { if (gen != practiceGeneration) return; transcribing = false; testMic.Enabled = transcribe.Enabled = true; transcribe.Text = "Start dictation";
+                    if (error != null) { sttStatus.Text = error; return; } UpdateTranscript(ContinueDraft(practiceRawPrefix, text), ContinueDraft(practiceCleanPrefix, corrected)); source.SetupSpeechVerified = !String.IsNullOrWhiteSpace(text); if (CloseToTray) try { source.Save(); } catch (Exception ex) { sttStatus.Text = "Dictation succeeded, but setup status could not be saved: " + ex.Message; return; }
+                    sttStatus.Text = source.SetupSpeechVerified ? "Dictation complete. Review, copy, or keep speaking in this editor." : "No words recognized. Your earlier text is unchanged.";
                 });
             });
         }
         void CheckStt()
         {
             if (checking) return; checking = true; saved.Text = "Checking your bundled voice engine…"; testStt.Enabled = false;
+            var draft = PracticeConfig();
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 string problem = null;
-                try { if (source.AccurateDictationEnabled) AccurateSpeech.Warmup(source.Copy()); else problem = SpeechEngine.EnsureRunning(source, 30); }
+                try { if (draft.SpeechLanguage != "en") SpeechQuality.Recognize(draft, new byte[0], false); else if (draft.AccurateDictationEnabled) AccurateSpeech.Warmup(draft); else problem = SpeechEngine.EnsureRunning(draft, 30); }
                 catch (Exception ex) { problem = ex.Message; }
                 Post(() => { checking = false; testStt.Enabled = true; saved.Text = problem ?? "Ready. The offline speech engine is working."; sidebarStatus.Text = saved.Text; SetReadiness(saved.Text); });
             });
@@ -412,7 +513,7 @@ namespace Notewll
             try { if (IsHandleCreated && !IsDisposed) BeginInvoke((Action)(() => { if (!IsDisposed) action(); })); }
             catch (InvalidOperationException) { } // Closing the app while a local request completes.
         }
-        void SystemThemeChanged(object sender, Microsoft.Win32.UserPreferenceChangedEventArgs e) { Post(() => { ThemeColors.Apply(this, source.Theme); }); }
+        void SystemThemeChanged(object sender, Microsoft.Win32.UserPreferenceChangedEventArgs e) { Post(() => { ThemeColors.Apply(this, themeChoice.SelectedItem as string ?? source.Theme); }); }
         protected override void Dispose(bool disposing) { if (disposing) { Microsoft.Win32.SystemEvents.UserPreferenceChanged -= SystemThemeChanged; StopTest(); poll.Dispose(); } base.Dispose(disposing); }
     }
 }

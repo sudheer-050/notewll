@@ -41,6 +41,7 @@ namespace Notewll
         public static bool Available { get { return File.Exists(Path.Combine(root, "native", "libvosk.dll")) && File.Exists(Path.Combine(root, "model-small-en-us", "am", "final.mdl")); } }
         public static bool Healthy(Config config, out string detail)
         {
+            if (config != null && config.SpeechLanguage != "en") { bool ready = SpeechLanguages.Ready(config); detail = ready ? "Local multilingual model installed." : "Install multilingual speech in Storage > Optional features."; return ready; }
             if (config != null && !Config.IsLoopback(config.SttUrl)) { detail = "Legacy STT addresses must be loopback; this app transcribes locally."; return false; }
             detail = Available ? "Vosk Small English is installed (offline, CPU)." : "The small English speech model is missing. Run Notewll Setup to install it.";
             return Available;
@@ -64,6 +65,7 @@ namespace Notewll
         }
         public static string EnsureRunning(Config config, int seconds, Action<string> progress = null)
         {
+            if (config != null && config.SpeechLanguage != "en") { try { SpeechQuality.Recognize(config, new byte[0], false); return null; } catch (Exception ex) { return ex.Message; } }
             try { if (progress != null) progress("Loading the small English speech model..."); using (var stream = CreateStream()) { } return null; }
             catch (Exception ex) { return ex.Message; }
         }
@@ -88,6 +90,7 @@ namespace Notewll
         public static string Transcribe(Config config, byte[] wav)
         {
             byte[] pcm = PcmFromWav(wav);
+            if (config.SpeechLanguage != "en") return SpeechQuality.Recognize(config, pcm, false).text;
             using (var stream = CreateStream())
             {
                 for (int i = 0; i < pcm.Length; i += 8000) { var chunk = new byte[Math.Min(8000, pcm.Length - i)]; Buffer.BlockCopy(pcm, i, chunk, 0, chunk.Length); stream.Feed(chunk); }
@@ -129,6 +132,7 @@ namespace Notewll
             lock (gate)
             {
                 if (disposed) return "";
+                if (accurate != null && accurate.SpeechLanguage != "en") return final ? DictationSpeech.Transcribe(accurate, pcm) : "";
                 if (accurate != null) return AccurateSpeech.Transcribe(accurate, pcm);
                 if (stream == null) stream = SpeechEngine.CreateStream();
                 var delta = new byte[Math.Max(0, pcm.Length - position)]; Buffer.BlockCopy(pcm, position, delta, 0, delta.Length); position = pcm.Length;

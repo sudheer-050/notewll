@@ -30,18 +30,20 @@ namespace Notewll
         public Action Changed;
         public NotesSession(NoteStore store, Config config, Func<byte[], string> transcribe = null)
         {
-            this.store = store; this.config = config; nativeRecognition = transcribe == null && !SpeechQuality.Available(config);
-            this.transcribe = transcribe ?? (wav => SpeechEngine.TranscribeEnsured(config, wav));
+            this.store = store; this.config = config.Copy(); nativeRecognition = transcribe == null && config.SpeechLanguage == "en" && !SpeechQuality.Available(config);
+            this.transcribe = transcribe ?? (wav => SpeechEngine.TranscribeEnsured(this.config, wav));
         }
         void Notify() { var callback = Changed; if (!disposed && callback != null) callback(); }
-        public void Start(string title, string mode, string name, string microphoneId, string outputId)
+        public void Start(string title, string mode, string name, string microphoneId, string outputId, string kind = "Note")
         {
             if (busy || Document != null) throw new InvalidOperationException("Finish the current note first.");
-            Document = store.Create(title, mode, name); capturing = busy = true;
+            Document = store.Create(title, mode, name); Document.Kind = kind; Document.VoiceDraft = kind == "Note";
+            if (Document.AutoTitle) Document.Title = (kind == "Meeting" ? "Online meeting" : kind == "Conversation" ? "Conversation" : "Voice note") + " \u00b7 " + DateTime.Now.ToString("MMM d, HH:mm");
+            store.Save(Document); capturing = busy = true;
             recordingStarted = Stopwatch.GetTimestamp();
             audioThread = new Thread(() => Capture(mode, microphoneId, outputId)) { IsBackground = true, Name = "Notes audio" };
             audioThread.SetApartmentState(ApartmentState.STA); audioThread.Start();
-            if (!ready.WaitOne(10000)) { capturing = false; throw new IOException("Audio devices took too long to open. The note was kept."); }
+            if (!ready.WaitOne(10000)) { capturing = false; throw new IOException("Audio devices took too long to open. No audio was captured."); }
             if (startError != null) throw new IOException("Could not start note recording: " + startError.Message, startError);
             StartTranscriber();
         }
@@ -153,7 +155,7 @@ namespace Notewll
                 }
                 lock (Document)
                 {
-                    Document.Status = startError != null ? "Could not record - audio kept" : "Transcribing";
+                    Document.Status = startError != null ? "Could not record - no audio captured" : "Transcribing";
                     try { store.Save(Document); } catch (Exception ex) { Document.CaptureError = "Saving note failed: " + ex.Message; }
                 }
                 jobs.CompleteAdding();

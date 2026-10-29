@@ -1,0 +1,31 @@
+{
+  "title": "Notewll",
+  "shortDescription": "Offline English voice typing, personal notes and meeting recordings for Windows.",
+  "description": "Turn speech into text and keep your notes on your own PC. Notewll includes an offline English speech engine for Windows x64, with no account or cloud transcription subscription required.\n\nHold your dictation shortcut to speak into a focused text field. Create personal notes or record a meeting using microphone audio, computer playback, or both. Review transcripts alongside your own written notes, search saved conversations, and export the results.\n\nChoose Raw text to keep recognized wording or Modified text for basic local cleanup. Save confirmed spelling corrections and reusable snippets. A customizable floating ball keeps recording controls within reach.\n\nThe bundled English engine works without an additional download. Enhanced recognition, semantic search and voice matching are optional local features with separate runtime/model downloads and additional setup; some require Python.\n\nRequires a microphone for voice input. Recognition accuracy varies with speech, microphone and background noise. Review important text before sharing it. Voice typing may be unavailable in elevated applications, protected fields or apps that block simulated keyboard input. Record other people only with their permission.",
+  "features": [
+    "Offline English speech recognition included",
+    "Voice typing into compatible Windows text fields",
+    "Personal notes and meeting audio recording",
+    "Microphone, computer playback, or combined recording",
+    "Original and modified text views, written notes, tasks and bookmarks",
+    "Local search and conversation exports",
+    "Confirmed word corrections and reusable snippets",
+    "Customizable floating recording controls"
+  ],
+  "keywords": [
+    "dictation",
+    "voice typing",
+    "offline",
+    "notes",
+    "meeting notes",
+    "transcription",
+    "speech to text"
+  ],
+  "category": "Productivity",
+  "language": "en-us",
+  "price": "Free",
+  "website": "https://notewll.myhai.org/",
+  "supportEmail": "gsudheer56@gmail.com",
+  "releaseNotes": "Refreshed theme-aware interface with rounded controls and hidden scrollbars. Improved shortcut configuration, click-and-scroll WPM adjustment, dictionary and snippets layouts, original and modified text views, dialog sizing, and keyboard navigation. Includes the offline English speech engine; Microsoft Store manages app updates.",
+  "systemRequirements": "Windows 10 version 2004 or later, x64 processor. A microphone is required for voice input. Optional enhanced features require additional disk space, downloads and compatible Python runtimes."
+}

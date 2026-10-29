@@ -25,6 +25,6 @@ jobs:
         with:
           name: Notewll-Windows-preview
           path: |
-            dist/Notewll-Setup-0.10.0.exe
+            dist/Notewll-Setup-0.11.0.exe
             dist/update.json
-            dist/RELEASE_NOTES-0.10.0.md
+            dist/RELEASE_NOTES-0.11.0.md

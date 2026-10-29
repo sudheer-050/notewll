@@ -41,19 +41,21 @@ namespace Notewll
     }
     sealed class RecoveryForm : Form
     {
-        readonly TextBox text = new TextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical };
+        readonly TextBox text = new ThemedTextBox { Dock = DockStyle.Fill, Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical };
         readonly Label status = new Label { Dock = DockStyle.Top, Height = 85, Padding = new Padding(12) };
-        readonly Button retry = new Button { Text = "Retry speech", AutoSize = true };
+        readonly Button retry = new HubButton { Text = "Retry speech", AutoSize = true };
         public RecoveryForm(DictationRecovery recovery, Action<Action> retryAction)
         {
-            Text = "Recover last dictation"; Icon = AppLogo.Icon; Size = new Size(660, 450); StartPosition = FormStartPosition.CenterScreen; Font = new Font("Segoe UI", 10);
-            var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 48, Padding = new Padding(6) };
-            var copy = new Button { Text = "Copy text", AutoSize = true }; var discard = new Button { Text = "Discard", AutoSize = true };
+            AutoScaleMode = AutoScaleMode.None; MinimumSize = new Size(560, 400); Text = "Recover last dictation"; Icon = AppLogo.Icon; Size = new Size(660, 450); StartPosition = FormStartPosition.CenterScreen; Font = new Font("Segoe UI", 10);
+            var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true, Height = 48, Padding = new Padding(6) };
+            var copy = new HubButton { Text = "Copy text", AutoSize = true }; var discard = new HubButton { Text = "Discard", AutoSize = true };
             Action refresh = () => { text.Text = recovery.Text; status.Text = recovery.Message + "\nReview before pasting: some words may already be in your original field. Audio is held only in memory until discarded or the app exits."; retry.Enabled = recovery.Audio != null; copy.Enabled = text.TextLength > 0; };
             retry.Click += (s, e) => { retry.Enabled = false; status.Text = "Retrying locally..."; retryAction(() => { if (!IsDisposed) BeginInvoke((Action)refresh); }); };
             copy.Click += (s, e) => { try { if (text.TextLength > 0) Clipboard.SetText(text.Text); } catch (Exception ex) { status.Text = ex.Message; } };
             discard.Click += (s, e) => { recovery.Discard(); Close(); };
-            footer.Controls.AddRange(new Control[] { retry, copy, discard }); Controls.Add(text); Controls.Add(status); Controls.Add(footer); refresh(); ThemeColors.Apply(this, ThemeColors.Mode);
+            var close = DialogUi.Button("Close", (s, e) => Close()); CancelButton = close;
+            footer.Controls.AddRange(new Control[] { retry, copy, discard, close }); Controls.Add(text); Controls.Add(status); Controls.Add(footer); refresh(); ThemeColors.Apply(this, ThemeColors.Mode);
+            using (var graphics = CreateGraphics()) { float scale = graphics.DpiX / 96f; if (scale != 1) Scale(new SizeF(scale, scale)); }
         }
     }
 }

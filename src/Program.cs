@@ -37,6 +37,31 @@ namespace Notewll
             {
                 switch (args[0])
                 {
+                    case "--ui-audit": UiAudit.Run(args[1]); return 0;
+                    case "--backend-smoke": BackendVerification.Run(args[1], args[2], args[3]); return 0;
+                    case "--themes-smoke": ThemeVerification.Run(args[1], false); return 0;
+                    case "--themes-preview": ThemeVerification.Run(args[1], true); return 0;
+                    case "--voice-enrollment-preview":
+                        {
+                            System.IO.Directory.CreateDirectory(args[1]); Application.EnableVisualStyles();
+                            using (var enrollment = new VoiceEnrollmentDialog(new Config(), true))
+                            {
+                                enrollment.Show(); Application.DoEvents();
+                                for (int i = 0; i < VoiceEnrollmentDialog.Readings.Length; i++)
+                                {
+                                    enrollment.PreviewSample(i, false); CaptureHub(enrollment, System.IO.Path.Combine(args[1], "sample-" + (i + 1) + ".png"));
+                                    enrollment.PreviewSample(i, true); CaptureHub(enrollment, System.IO.Path.Combine(args[1], "sample-" + (i + 1) + "-recording.png"));
+                                }
+                                enrollment.Close();
+                            }
+                            Console.Write("voice-enrollment-preview-ok|samples=3|no-microphone"); return 0;
+                        }
+                    case "--recording-shortcuts-smoke": RecordingShortcutVerification.Run(args[1]); return 0;
+                    case "--recording-shortcuts-config":
+                        var shortcuts = Config.Load(args[1]); Console.Write(shortcuts.Hotkey + "|" + shortcuts.NotesHotkey + "|" + shortcuts.MeetingHotkey); return 0;
+                    case "--typing-keymap-smoke": TypingVerification.Keymap(); return 0;
+                    case "--typing-editor-smoke": TypingVerification.Editors(); return 0;
+                    case "--distribution-info": Console.Write(StoreDistribution.Enabled ? "store|updates=MicrosoftStore|startup=StartupTask" : "direct|updates=Publisher|startup=Registry"); return 0;
                     case "--roadmap-smoke": RoadmapVerification.Run(args[1]); return 0;
                     case "--handsfree-worker-smoke": HandsFreeVerification.Worker(args[1], args[2], args[3], args.Skip(4).ToArray()); return 0;
                     case "--handsfree-preview":
@@ -113,6 +138,8 @@ namespace Notewll
                         HistoryVerification.Run(args[1]); return 0;
                     case "--ux-smoke":
                         UxVerification.Run(args[1]); return 0;
+                    case "--product-smoke": ProductVerification.Run(args.Length > 1 ? args[1] : null); return 0;
+                    case "--startup-profile": StartupProfile.Run(args.Contains("--warm")); return 0;
                     case "--smart-cleanup-smoke": SmartCleanupVerification.Run(); return 0;
                     case "--smart-cleanup-batch":
                         {
@@ -143,9 +170,10 @@ namespace Notewll
                             Application.EnableVisualStyles();
                             using (var toolbar = new FloatingDock())
                             {
-                                int writes = 0, notes = 0, meetings = 0, cancellations = 0;
+                                int writes = 0, notes = 0, meetings = 0, listening = 0, cancellations = 0;
                                 ((System.Windows.Forms.Timer)typeof(FloatingDock).GetField("hover", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(toolbar)).Stop();
                                 toolbar.CancelWrite = () => cancellations++; toolbar.Configure(true); toolbar.ToggleWrite = () => writes++; toolbar.ToggleNote = () => notes++; toolbar.ToggleMeeting = () => meetings++;
+                                toolbar.ToggleHandsFree = () => listening++;
                                 IntPtr foreground = Native.GetForegroundWindow(); toolbar.RestorePosition(Int32.MinValue, Int32.MinValue); toolbar.Show(); Application.DoEvents();
                                 if (Native.GetForegroundWindow() != foreground) throw new Exception("Toolbar took focus.");
                                 if (Math.Max(toolbar.Width, toolbar.Height) >= 120 || Math.Min(toolbar.Width, toolbar.Height) > 80) throw new Exception("Resting toolbar is too large.");
@@ -157,8 +185,21 @@ namespace Notewll
                                     Native.SendMessage(button.Handle, 0x201, (IntPtr)1, point); Native.SendMessage(button.Handle, 0x202, IntPtr.Zero, point); Application.DoEvents();
                                 }
                                 if (Native.GetForegroundWindow() != foreground) throw new Exception("Clicking the toolbar took focus.");
-                                if (writes != 1 || notes != 1 || meetings != 1) throw new Exception("Toolbar actions are not separate.");
-                                if (toolbar.Controls.OfType<DockButton>().Count() != 3 || toolbar.Controls.OfType<DockButton>().Any(button => button.AccessibleName == "Open Notewll")) throw new Exception("Toolbar still has an Open app button");
+                                if (writes != 1 || notes != 1 || meetings != 1 || listening != 1) throw new Exception("Toolbar actions are not separate.");
+                                if (toolbar.Controls.OfType<DockButton>().Count() != 4 || toolbar.Controls.OfType<DockButton>().Any(button => button.AccessibleName == "Open Notewll")) throw new Exception("Toolbar must have exactly four recording actions.");
+                                toolbar.ShowVoiceIndicator = true;
+                                toolbar.UpdateState(true, false, false, false, false, "Hands-free listening", true);
+                                if (!toolbar.AccessibleName.Contains("Hands-free") || !toolbar.HasVoiceIndicator) throw new Exception("Hands-free microphone status is missing.");
+                                var stopListeningPoint = new IntPtr((toolbar.Height / 2 << 16) | toolbar.Width / 2); Native.SendMessage(toolbar.Handle, 0x201, new IntPtr(1), stopListeningPoint); Native.SendMessage(toolbar.Handle, 0x202, IntPtr.Zero, stopListeningPoint);
+                                if (listening != 2 || writes != 1) throw new Exception("Active ball did not pause hands-free separately from dictation.");
+                                toolbar.UpdateState(true, false, false, false, false, "Microphone listening in Notewll", false, false, true);
+                                Native.SendMessage(toolbar.Handle, 0x201, new IntPtr(1), stopListeningPoint); Native.SendMessage(toolbar.Handle, 0x202, IntPtr.Zero, stopListeningPoint);
+                                if (!toolbar.HasVoiceIndicator || !toolbar.AccessibleName.Contains("Microphone listening") || writes != 1) throw new Exception("In-app microphone status did not animate safely.");
+                                toolbar.UpdateState(false, false, false, false, false, "Preparing hands-free", false, true);
+                                var handsFreeButton = toolbar.Controls.OfType<DockButton>().Single(b => b.Symbol == "handsfree");
+                                if (!handsFreeButton.Working || !handsFreeButton.Enabled || !handsFreeButton.AccessibleName.Contains("Cancel")) throw new Exception("Hands-free setup cannot be canceled from the ball.");
+                                toolbar.UpdateState(false, false, true, true, false, "Recording note");
+                                if (handsFreeButton.Enabled) throw new Exception("Hands-free can start during note recording.");
                                 toolbar.UpdateState(false, true, false, false, false, "Processing");
                                 var cancelPoint = new IntPtr((toolbar.Height / 2 << 16) | toolbar.Width / 2); Native.SendMessage(toolbar.Handle, 0x201, new IntPtr(1), cancelPoint); Native.SendMessage(toolbar.Handle, 0x202, IntPtr.Zero, cancelPoint); if (cancellations != 1 || writes != 1) throw new Exception("Processing cancellation is unavailable without the fourth button");
                                 toolbar.UpdateState(false, false, false, false, false, "Ready");
@@ -187,10 +228,16 @@ namespace Notewll
                                 foreach (float scale in new[] { 1f, 1.75f, 2f })
                                 {
                                     dpiField.SetValue(toolbar, scale); toolbar.RestorePosition(area.Left + area.Width / 2, area.Bottom - 1); toolbar.SetExpanded(true, true);
-                                    foreach (var button in toolbar.Controls.OfType<DockButton>()) if (button.Left < 0 || button.Top < 0 || button.Right > toolbar.ClientSize.Width || button.Bottom > toolbar.ClientSize.Height) throw new Exception("Toolbar button clipped at " + scale + " DPI scale");
+                                    var icons = toolbar.Controls.OfType<DockButton>().ToArray();
+                                    foreach (var button in icons) if (button.Left < 0 || button.Top < 0 || button.Right > toolbar.ClientSize.Width || button.Bottom > toolbar.ClientSize.Height) throw new Exception("Toolbar button clipped at " + scale + " DPI scale");
+                                    for (int i = 0; i < icons.Length; i++) for (int j = i + 1; j < icons.Length; j++)
+                                    {
+                                        double dx = icons[i].Left + icons[i].Width / 2.0 - icons[j].Left - icons[j].Width / 2.0, dy = icons[i].Top + icons[i].Height / 2.0 - icons[j].Top - icons[j].Height / 2.0;
+                                        if (Math.Sqrt(dx * dx + dy * dy) < (icons[i].Width + icons[j].Width) / 2.0) throw new Exception("Toolbar action circles overlap.");
+                                    }
                                     if (args[0] == "--toolbar-preview") CaptureDock(toolbar, System.IO.Path.ChangeExtension(args[1], ".dpi-" + (int)(scale * 100) + ".png"));
                                 }
-                                toolbar.Close(); Console.Write("toolbar-ok|buttons=3|no-focus-steal|edge-snap"); return 0;
+                                toolbar.Close(); Console.Write("toolbar-ok|buttons=4|handsfree-start-stop|no-focus-steal|edge-snap"); return 0;
                             }
                         }
                     case "--note-metadata-smoke":
@@ -217,7 +264,7 @@ namespace Notewll
                         {
                             Application.EnableVisualStyles();
                             using (var form = new Form { Text = "Notewll input test" })
-                            using (var field = new TextBox { Dock = DockStyle.Fill, Text = "Keep this. ", Multiline = true })
+                            using (var field = new ThemedTextBox { Dock = DockStyle.Fill, Text = "Keep this. ", Multiline = true })
                             {
                                 form.Controls.Add(field); form.Show(); form.Activate(); field.Focus(); field.SelectionStart = field.TextLength; Application.DoEvents();
                                 if (!Native.WriteLive(form.Handle, LiveEdit.Between("", "um hello"))) throw new Exception("Live insertion was blocked.");
@@ -296,8 +343,8 @@ namespace Notewll
                             var restored = new NoteStore(System.IO.Path.Combine(args[1], "restored")); if (NotesData.Restore(restored, backup) != 1 || NotesData.Restore(restored, backup) != 0) throw new Exception("Backup restore lost data or overwrote identifiers.");
                             string original = NoteStore.Transcript(note); note.Summary = NotesSummary.Generate(note); if (!note.Summary.Contains("send the report tomorrow") || original != NoteStore.Transcript(note)) throw new Exception("Excerpts changed the conversation.");
                             var config = new Config(); config.Theme = "Dark"; config.Personalization.Add(new PersonalRule { Kind = "Word", Trigger = "sue deer", Replacement = "Sudheer" }); config.Personalization.Add(new PersonalRule { Kind = "Snippet", Trigger = "my sign off", Replacement = "Thanks,\nSudheer" }); config.Validate();
-                            if (config.Theme != "System") throw new Exception("Legacy appearance was not migrated.");
-                            ThemeColors.Mode = "Dark"; if (ThemeColors.Mode != "System") throw new Exception("Application theme must remain fixed.");
+                            if (config.Theme != "Dark") throw new Exception("Selected theme was not preserved.");
+                            ThemeColors.Mode = "Dark"; if (ThemeColors.Mode != "Dark" || !ThemeColors.Dark) throw new Exception("Selected dark theme was not applied.");
                             if (PersonalRule.Apply(config.Copy(), "hello sue deer my sign off") != "hello Sudheer Thanks,\nSudheer") throw new Exception("Dictionary or snippets failed.");
                             string rules = System.IO.Path.Combine(args[1], "rules.json"); NotesData.WriteRules(rules, config.Personalization); if (NotesData.ReadRules(rules).Count != 2) throw new Exception("Rule import/export failed.");
                             Application.EnableVisualStyles();
@@ -449,7 +496,9 @@ namespace Notewll
                     case "--settings-smoke":
                         {
                             Application.EnableVisualStyles();
-                            using (var f = new SettingsForm(Config.Load(), "um hello hello there", ""))
+                            var smokeRoot = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "notewll-settings-smoke-" + Guid.NewGuid().ToString("N"));
+                            Config.DiagnosticDataRoot(smokeRoot);
+                            using (var f = new SettingsForm(new Config(), "um hello hello there", "", new NoteStore(System.IO.Path.Combine(smokeRoot, "notes"))))
                             {
                                 var t = new System.Windows.Forms.Timer { Interval = 800 };
                                 t.Tick += (s, e) => { t.Stop(); Console.Write("settings-ok|" + f.Summary); f.Close(); };
@@ -514,6 +563,10 @@ namespace Notewll
                 var dc = graphics.GetHdc();
                 try { if (!Native.PrintWindow(form.Handle, dc, 0u)) throw new InvalidOperationException("Window preview capture failed"); }
                 finally { graphics.ReleaseHdc(dc); }
+                // Restricted desktop sessions can report a successful capture containing only black pixels.
+                bool black = true;
+                for (int x = 1; x <= 3; x++) for (int y = 1; y <= 3; y++) if ((image.GetPixel(image.Width * x / 4, image.Height * y / 4).ToArgb() & 0xffffff) != 0) black = false;
+                if (black) form.DrawToBitmap(image, new System.Drawing.Rectangle(0, 0, image.Width, image.Height));
                 image.Save(path);
             }
         }

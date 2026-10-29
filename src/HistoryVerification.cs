@@ -49,7 +49,7 @@ namespace Notewll
                 hub.Size = hub.MinimumSize; Application.DoEvents(); home.ScrollControlIntoView(progressCard); Application.DoEvents(); Snapshot(hub, Path.Combine(root, "speaking-progress-compact.png"));
                 home.AutoScrollPosition = Point.Empty;
                 if (home.Controls.OfType<Surface>().Count() != 4 || home.Controls.OfType<Surface>().SelectMany(card => card.Controls.OfType<Label>()).Any(label => label.Text == "Your history")) throw new Exception("Home still contains history");
-                var metrics = (VoiceKpis)Field(hub, "voiceKpis"); if (metrics.Right > metrics.Parent.ClientSize.Width || metrics.Bottom > metrics.Parent.ClientSize.Height) throw new Exception("KPI layout clipped after first show"); if (metrics.Words != 4 || metrics.Sentences != 1) throw new Exception("Home KPIs changed");
+                var metrics = (VoiceKpis)Field(hub, "voiceKpis"); if (metrics.Right > metrics.Parent.ClientSize.Width || metrics.Bottom > metrics.Parent.ClientSize.Height) throw new Exception("KPI layout clipped after first show"); if (metrics.Words != 4 || metrics.Sentences != 1 || metrics.DailySavedMinutes.Length != 7 || metrics.DailySavedMinutes[6] <= 0) throw new Exception("Home KPIs or savings trend changed");
                 var welcome = (Label)Field(hub, "homeWelcome");
                 if (!welcome.Text.StartsWith("You've saved about ") || VoiceKpis.WelcomeHeadline(600, 40) != "You've saved about 11 minutes." || VoiceKpis.WelcomeHeadline(0, 40).Contains("saved") || VoiceKpis.WelcomeHeadline(600, 200).Contains("saved")) throw new Exception("Welcome savings message is missing or misleading");
                 var typing = (NumericUpDown)Field(hub, "typingSpeed"); typing.Value = 80;
@@ -58,11 +58,15 @@ namespace Notewll
                 var speech = (TextBox)Field(hub, "raw");
                 if (navigation[1].Visible || speech.Visible || speech.Parent != practice || practice.Parent != home || pages[1].Controls.Count != 0) throw new Exception("Practice remains a separate page or is not collapsed on Home");
                 toggle.PerformClick(); Application.DoEvents();
-                if (hub.CurrentPage != "Home" || !speech.Visible || toggle.Text != "Hide test") throw new Exception("Home practice did not expand inline");
+                if (hub.CurrentPage != "Home" || !speech.Visible || toggle.Text != "Hide editor") throw new Exception("Home dictation editor did not expand inline");
                 hub.UpdateTranscript("a quick practice sentence", "A quick practice sentence.");
                 if (store.List().Count != 3) throw new Exception("Practice changed history");
                 Snapshot(hub, Path.Combine(root, "home-practice-expanded.png"));
-                toggle.PerformClick(); if (speech.Visible || toggle.Text != "Try it") throw new Exception("Home practice did not collapse");
+                toggle.PerformClick(); if (speech.Visible || toggle.Text != "Open editor") throw new Exception("Home dictation editor did not collapse");
+                hub.CanTest = () => false;
+                using (var menu = hub.BuildHomeCreateMenu()) menu.Items[0].PerformClick(); Application.DoEvents();
+                if (hub.CurrentPage != "Home" || !speech.Visible) throw new Exception("Dictate did not open Notewll's text editor.");
+                hub.CanTest = null; toggle.PerformClick();
                 hub.ShowPage("Playground"); if (hub.CurrentPage != "Home" || !speech.Visible) throw new Exception("Setup practice link did not route to Home");
                 toggle.PerformClick(); hub.ShowPage("Home");
                 Snapshot(hub, Path.Combine(root, "home.png"));
@@ -70,9 +74,11 @@ namespace Notewll
                 if (hub.Notes.VisibleNotes != 3 || hub.Notes.ClearHistory == null) throw new Exception("Notes lost history or bulk cleanup");
                 var browser = (Panel)Field(hub.Notes, "notesBrowser"); var filters = (LibraryFilter[])Field(hub.Notes, "browserFilters");
                 if (!browser.Visible || hub.Notes.Controls.OfType<SplitContainer>().Any()) throw new Exception("Notes browser is not full-width or retains split sidebar");
-                for (int i = 1; i < filters.Length; i++) { filters[i].PerformClick(); if (hub.Notes.VisibleNotes != 1) throw new Exception("Category filter failed: " + filters[i].Text); }
+                for (int i = 1; i < filters.Length; i++) { filters[i].PerformClick(); if (hub.Notes.VisibleNotes != (i == 3 ? 0 : 1)) throw new Exception("Category filter failed: " + filters[i].Text); }
                 filters[0].PerformClick(); if (hub.Notes.VisibleNotes != 3) throw new Exception("All filter lost entries");
-                if (browser.Controls.OfType<Panel>().SelectMany(panel => panel.Controls.OfType<HubButton>()).Any(button => new[] { "New note", "Record note", "Record meeting" }.Contains(button.Text))) throw new Exception("Creation buttons remain in library");
+                if (browser.Controls.OfType<Panel>().SelectMany(panel => panel.Controls.OfType<HubButton>()).Any(button => new[] { "Find & act", "New note", "New conversation", "Record meeting", "Write note" }.Contains(button.Text))) throw new Exception("History still contains creation or advanced search actions");
+                var browserToolbar = (Panel)Field(hub.Notes, "browserHeader"); var search = (Panel)Field(hub.Notes, "browserSearchFrame");
+                if (search.Top - filters[0].Bottom > 20 || browserToolbar.Height - search.Bottom > 50) throw new Exception("History retains the removed toolbar gap");
                 if (ActivityHistory.Kind(new NoteDocument { Kind = "Meeting", Mode = "Microphone" }) != "Meeting" || ActivityHistory.Kind(new NoteDocument { Kind = "Note", Mode = "Computer" }) != "Note") throw new Exception("Categories depend on audio source rather than capture type");
                 var content = (Panel)Field(hub.Notes, "browserContent");
                 if (content.Controls.OfType<Label>().Count() != 2 || content.Controls.OfType<Surface>().Count() != 3) throw new Exception("Date-grouped browser rows missing");

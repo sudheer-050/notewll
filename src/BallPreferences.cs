@@ -9,7 +9,7 @@ namespace Notewll
         readonly Timer timer=new Timer { Interval=15 };
         readonly System.Diagnostics.Stopwatch clock=System.Diagnostics.Stopwatch.StartNew();
         readonly BallPhysics ball=new BallPhysics();
-        readonly DockButton[] icons={new DockButton { Symbol="conversation" },new DockButton { Symbol="microphone" },new DockButton { Symbol="note" }};
+        readonly DockButton[] icons={new DockButton { Symbol="microphone" },new DockButton { Symbol="note" },new DockButton { Symbol="conversation" },new DockButton { Symbol="handsfree" }};
         Bitmap skin;
         string textureKey;
         float rotation;
@@ -49,7 +49,7 @@ namespace Notewll
             var center=ExpandedCenter; float scale=DeviceScale*expandedScale*ExpansionFit;
             for(int i=0;i<icons.Length;i++)
             {
-                double angle=(-145+i*55)*Math.PI/180;
+                double angle=(-152+i*(124f/(icons.Length-1)))*Math.PI/180;
                 icons[i].SetBounds((int)(center.X+BallCatalog.FanRadius*scale*Math.Cos(angle)-BallCatalog.TileDiameter/2f*scale),(int)(center.Y+BallCatalog.FanRadius*scale*Math.Sin(angle)-BallCatalog.TileDiameter/2f*scale),(int)Math.Round(BallCatalog.TileDiameter*scale),(int)Math.Round(BallCatalog.TileDiameter*scale));
             }
         }
@@ -99,10 +99,10 @@ namespace Notewll
     }
     sealed partial class SettingsForm
     {
-        readonly ComboBox ballAppearance=new ComboBox { DropDownStyle=ComboBoxStyle.DropDownList }, ballGravity=new ComboBox { DropDownStyle=ComboBoxStyle.DropDownList };
-        readonly TrackBar ballSize=new TrackBar { Minimum=50,Maximum=450,Value=100,TickStyle=TickStyle.None,SmallChange=1,LargeChange=10,AccessibleName="Ball size percentage" };
-        readonly TrackBar ballExpandedSize=new TrackBar { Minimum=100,Maximum=200,Value=100,TickStyle=TickStyle.None,SmallChange=1,LargeChange=10,AccessibleName="Expanded ball size percentage" };
-        readonly NumericUpDown ballAngle=new NumericUpDown { Minimum=0,Maximum=359,Value=45 };
+        readonly ComboBox ballAppearance=new ThemedComboBox { DropDownStyle=ComboBoxStyle.DropDownList }, ballGravity=new ThemedComboBox { DropDownStyle=ComboBoxStyle.DropDownList };
+        readonly TrackBar ballSize=new ThemedTrackBar { Minimum=50,Maximum=450,Value=100,TickStyle=TickStyle.None,SmallChange=1,LargeChange=10,AccessibleName="Ball size percentage" };
+        readonly TrackBar ballExpandedSize=new ThemedTrackBar { Minimum=100,Maximum=200,Value=100,TickStyle=TickStyle.None,SmallChange=1,LargeChange=10,AccessibleName="Expanded ball size percentage" };
+        readonly NumericUpDown ballAngle=new WheelNumber { Minimum=0,Maximum=359,Value=45 };
         readonly BallPreview ballPreview=new BallPreview();
         HubButton ballFirst,ballSecond;
         Label ballDetails,ballAngleLabel;

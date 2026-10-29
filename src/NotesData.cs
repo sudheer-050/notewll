@@ -10,7 +10,17 @@ namespace Notewll
 {
     static class NotesData
     {
-        public static void WriteRules(string path, List<PersonalRule> rules) { File.WriteAllText(path, new JavaScriptSerializer().Serialize(rules), new UTF8Encoding(false)); }
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+        static extern bool MoveFileEx(string source, string destination, int flags);
+        internal static void CommitFile(string source, string destination)
+        { if (!MoveFileEx(source, destination, 1 | 8)) throw new IOException("Could not commit the saved file: " + new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error()).Message); }
+        public static void WriteRules(string path, List<PersonalRule> rules)
+        {
+            var copy = rules.Select(r => r.Copy()).ToList(); PersonalRule.Validate(copy);
+            string temporary = Path.GetFullPath(path) + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try { File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(copy), new UTF8Encoding(false)); CommitFile(temporary, path); }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        }
         public static List<PersonalRule> ReadRules(string path)
         {
             if (new FileInfo(path).Length > 3 * 1024 * 1024) throw new IOException("Import limit is 3 MB.");

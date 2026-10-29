@@ -20,9 +20,9 @@ namespace Notewll
                 layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100)); dialog.Controls.Add(layout);
                 layout.Controls.Add(DialogUi.Text("Export a PDF snapshot"), 0, 0);
                 var choices = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 1 };
-                var scope = new ComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Export content" };
+                var scope = new ThemedComboBox { Dock = DockStyle.Top, DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Export content" };
                 scope.Items.AddRange(new object[] { "Conversation only", "Personal notes only", "Full record" }); scope.SelectedIndex = ActivityHistory.Kind(note) == "Note" ? 1 : 0;
-                var names = new CheckBox { Text = "Include participant and speaker labels", AutoSize = true, Dock = DockStyle.Top, Margin = new Padding(0, 10, 0, 8) };
+                var names = new ThemedCheckBox { Text = "Include participant and speaker labels", AutoSize = true, Dock = DockStyle.Top, Margin = new Padding(0, 10, 0, 8) };
                 choices.Controls.Add(scope); choices.Controls.Add(names); layout.Controls.Add(choices, 0, 1);
                 layout.Controls.Add(DialogUi.Text("Spoken names remain in the text. This choice only controls participant and speaker labels."), 0, 2);
                 layout.Controls.Add(DialogUi.Text("Select text in the preview and choose Redact selected text. Only the exported PDF text changes. Audio is NOT redacted or included. Changing content choices resets redactions."), 0, 3);

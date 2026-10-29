@@ -66,7 +66,7 @@ class Recognizer:
         directory = model_directory()
         for name in ['config.json', 'vocab.txt', 'encoder-model.onnx', 'encoder-model.onnx.data', 'decoder_joint-model.onnx']:
             if not (directory / name).is_file():
-                raise RuntimeError('Accurate local speech is missing. Run scripts/setup_accuracy.ps1 before dictating.')
+                raise RuntimeError('Set up accurate speech in Preferences > Storage > Optional features before dictating.')
         self.gate = SpeechPresence()
         options = ort.SessionOptions()
         options.intra_op_num_threads = 4

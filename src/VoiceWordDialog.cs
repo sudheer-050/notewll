@@ -13,9 +13,9 @@ namespace Notewll
         readonly HubButton record = new HubButton { Text = "Record pronunciation", Primary = true, AccessibleName = "Record pronunciation" };
         readonly HubButton play = new HubButton { Text = "Listen", Enabled = false };
         readonly HubButton use = new HubButton { Text = "Use word", Primary = true, Enabled = false };
-        readonly TextBox spelling = new TextBox { AccessibleName = "Correct spelling", MaxLength = 80, Font = new Font("Segoe UI", 12) };
+        readonly TextBox spelling = new ThemedTextBox { AccessibleName = "Correct spelling", MaxLength = 80, Font = new Font("Segoe UI", 12) };
         readonly Label feedback = new Label(), heardLabel = new Label(), elapsed = new Label();
-        readonly ProgressBar level = new ProgressBar { Minimum = 0, Maximum = 12000 };
+        readonly ProgressBar level = new ThemedProgressBar { Minimum = 0, Maximum = 12000 };
         readonly Timer timer = new Timer { Interval = 100 };
         MicRecorder recorder;
         SoundPlayer player;

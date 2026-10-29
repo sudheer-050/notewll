@@ -14,8 +14,8 @@ namespace Notewll
     }
     static class BallCatalog
     {
-        internal const int ExpandedDiameter=114, TileDiameter=33;
-        internal const float FanRadius=37.5f;
+        internal const int ExpandedDiameter=140, TileDiameter=33;
+        internal const float FanRadius=50f;
         internal static readonly string[] Appearances={"Color","Gradient","Basketball","Football / soccer ball","Cricket ball","Rubber ball","Tennis ball","Golf ball","Baseball","Volleyball","Moon","Mercury","Venus","Earth","Mars","Jupiter","Saturn","Uranus","Neptune"};
         internal static readonly string[] Gravities={"Moon","Mercury","Venus","Earth","Mars","Jupiter","Saturn","Uranus","Neptune"};
         // NASA NSSDCA Planetary Fact Sheet, relative to Earth (moon rounded to 0.166).

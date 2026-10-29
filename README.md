@@ -1,97 +1,66 @@
 ﻿<p align="center"><img src="assets/notewll.png" width="76" alt="Notewll logo"></p>
 
-# Notewll — local dictation, voice notes and meeting transcripts for Windows
+# Notewll - local dictation, notes and meetings for Windows
 
-The application and build executable are `Notewll.exe`. The product page is
-`https://notewll.myhai.org/`; old `/projects/dotflow/` links redirect there. Upgrades keep
-the existing `%LOCALAPPDATA%\LocalDictation` data folder, Windows registration,
-and a `LocalDictation.exe` compatibility copy for old pinned shortcuts. These
-internal compatibility names do not change the product's name or move your notes.
+Speak into your apps, record a thought, and return to saved conversations. Speech processing and notes stay on your computer.
 
-**Speak naturally. Keep the words that matter.**
+[**Download Windows preview 0.11.0**](https://github.com/sudheer-050/notewll/releases/download/v0.11.0/Notewll-Setup-0.11.0.exe) ? [Product and demo](https://notewll.myhai.org/) ? [Portfolio case study](https://sudheerkumargandiboyana.com/projects/notewll/) ? [User guide](USER_GUIDE.md)
 
-Turn speech into text, catch a thought, and return to the conversation. Notewll combines shortcut dictation, personal notes, timestamped meeting recordings and raw or modified text in a native Windows app.
+**Windows 10/11 x64 ? .NET Framework 4.8 ? unsigned preview.** The installer includes standard offline English speech; no account, Python or Docker is needed for that path. Optional local models require separate setup.
 
-![Notewll 0.10.0: speak naturally and keep the words that matter](assets/showcase/0.10.0/launch-card.svg)
+![Notewll Home with Create menu and always-visible voice analytics](assets/showcase/0.11.0/home.png)
 
-[**Download Windows preview**](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Setup-0.10.0.exe) · [Small update for existing installs](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Small-Update.zip) · [Product and demo](https://notewll.myhai.org/) · [Portfolio case study](https://sudheerkumargandiboyana.com/projects/notewll/) · [User guide](USER_GUIDE.md)
+## A simpler workspace
 
-**Windows 10/11 x64 · English · 0.10.0 unsigned preview.** The installer includes the standard offline speech engine. Semantic search and voice matching use optional, separately installed local models.
+- **Create:** Dictate, Note, Meeting or Conversation from one compact Home menu.
+- **Analytics:** see estimated time saved, dictated words, sentences and weekly activity without expanding a section.
+- **History:** search and filter saved dictations, notes, conversations and meetings. Open entries to review, edit or export.
+- **Try Notewll:** use the local editor to compare raw and modified text before copying it.
 
-**macOS:** an early native build covering just the core dictate loop lives under [`macos/`](macos/README.md) (v0.10.0, unsigned, built via GitHub Actions since Xcode requires a Mac).
+## Words and phrases that work for you
 
-## New: speak through a restart
+Dictionary fixes recurring recognized words and names. Snippets expand a short phrase into longer text. Both have a centered search field, a clear two-column table and immediate entry saving. Select a row to edit; select several to remove or export. There are no sort/favorite controls or duplicate sentence-preview sections.
 
-Natural speech contains restarts. Your written sentence does not need to keep every one.
+![Dictionary: recognized phrase and preferred spelling](assets/showcase/0.11.0/dictionary.png)
+![Snippets: spoken trigger and expanded text](assets/showcase/0.11.0/snippets.png)
 
-| You say | Notewll can write |
-|---|---|
-| “What's the what's the best restaurant near me?” | “What's the best restaurant near me?” |
-| “Can you list what are what updates you have done?” | “Can you list what updates you have done?” |
-| “I just wanted to talk to you about what are what what about the king?” | “I just wanted to talk to you about the king.” |
+## Local writing controls
 
-Choose **Preferences > Writing > Text mode**:
+Style groups Raw text, Light cleanup and Modified text with Standard, Chat, Email and Code formatting. Raw text bypasses cleanup and replacements. Modified text uses conservative rules for fillers and supported repeated starts; quoted dialogue remains literal. Originals are retained.
 
-- **Raw text:** keep recognized text unchanged, including fillers and repeats. Dictionary replacements and writing-style formatting are bypassed.
-- **Modified text:** remove fillers and repeated starts, then apply basic punctuation, capitalization and your selected writing preferences.
+App-specific styles are opt-in and match local process names, not browser domains or surrounding text. Formatted snippets support bold, italic, bullets and URL text; exact-trigger formatted paste requires an explicit opt-in. Other apps can accept only the plain-text fallback. Remember a correction lets you review a proposed word correction before saving it.
 
-Original recognized text and the modified result remain available for review. Neither mode needs a sentence-editing model.
+Voice editing accepts explicit commands such as uppercase, replace X with Y and remove the last sentence, then shows a preview. It does not silently read another application's selection or generate arbitrary prose.
 
-![Illustration of a repeated question becoming a clearer sentence; not recorded app footage](assets/showcase/0.10.0/cleanup-animation.svg)
+## Notes, meetings and recovery
 
-## One workspace, three ways to capture
+Capture microphone audio, computer output or both. Review original timestamped statements, search saved work and export a PDF with a text preview. Optional local retrieval supplies supporting passages; it is not open-ended generated Q&A. Local ICS import supports individual timed events and opt-in reminders while the app runs; it never starts recording automatically. Calendar accounts and recurring series are not synchronized.
 
-- **Voice typing:** focus a text field, hold F8 or your chosen shortcut, speak, then release. Live writing is optional. Raw recognized words and cleaned dictation remain separately available in history.
-- **Personal notes:** write a note or record microphone audio, with editable titles, project labels and tags.
-- **Meeting notes:** record microphone audio, computer output, or both; retain source audio and timestamped original statements alongside personal annotations.
-
-![Current Notewll Windows workspace with demonstration data](assets/showcase/0.10.0/workspace.png)
-
-## Find what you discussed. Jump to the moment.
-
-**Find & act** connects saved conversations to source passages and playback. Optional local semantic search retrieves supporting excerpts; it does not answer open-ended questions or invent missing context. Lightweight highlights select timestamped original passages. Suggested action items show supporting statements, editable owner/date fields and a confirmation step before becoming tasks.
-
-During recording, mark **Important**, **Question** or **Follow up** with Ctrl+Alt+1/2/3. Open bookmarks after recording and jump back to the saved moment. History supports `project:"Apollo release" tag:budget person:Alex` filters.
-
-![Find & act screen using an isolated sample meeting](assets/showcase/0.10.0/find-and-act.png)
-
-Semantic retrieval's installation/inference and physical global-shortcut recording still need the acceptance checks listed in the [roadmap verification report](verification/IMPROVEMENT_ROADMAP.md). They are implemented preview features, not validated accuracy claims.
-
-## More control, less friction
-
-| Feature | What changed |
-|---|---|
-| Hands-free development preview | Enrolled-voice matching, allowed-app list, visible microphone state, Escape to pause, and pause on lock or microphone changes. Starts paused. Voice matching can make mistakes; physical desktop acceptance remains pending. |
-| Correction learning | Review confirmed words and snippets, see where a rule applies, edit/remove it for future use, and keep original conversation words. |
-| Private PDF sharing | Choose the content scope, preview the exact text, redact a selection, and export. Personal annotations can be excluded. Audio is not included or redacted. |
-| Recovery | Opt-in daily local snapshots while the app runs, authenticated encryption tied to the Windows account/PC, and a restore preview that skips existing note IDs. ZIP remains available for migration. |
-| Optional features | Inspect separate storage/download/RAM information when measured; install/remove managed semantic-search and voice-matching runtimes while keeping notes. Unknown measurements stay labeled unknown. |
-| Your voice, your orbit | Keep the physics-driven floating ball, sports/planet skins, gravity presets, colors/gradients, separate ball/menu sizes, and rotating local images. |
-
-![Writing preferences with Raw text and Modified text](assets/showcase/0.10.0/text-modes.png)
+Notes save atomically and have recovery copies. Optional encrypted snapshots depend on the Windows account/PC; ZIP backups support migration. The customizable floating ball, reduced-motion controls and explicit enrolled-voice hands-free preview remain available.
 
 ## Install or update
 
-1. Download [Notewll-Setup-0.10.0.exe](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Setup-0.10.0.exe) and the [checksums](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/SHA256SUMS-0.10.0.txt).
-2. Finish active recordings, open the installer, choose Install, then Open app. Existing notes and preferences are preserved.
-3. Check the microphone in Practice, then test your shortcut in your chosen editor.
-4. Choose Raw text or Modified text in **Preferences > Writing > Text mode**, then save your preferences.
-5. Optional semantic search and voice matching have their own setup paths. The [small update ZIP](https://github.com/sudheer-050/notewll/releases/download/v0.10.0/Notewll-Small-Update.zip) is for existing installations and includes a READ ME; it is not a first-time installer.
+1. Download [Notewll-Setup-0.11.0.exe](https://github.com/sudheer-050/notewll/releases/download/v0.11.0/Notewll-Setup-0.11.0.exe) and [checksums](https://github.com/sudheer-050/notewll/releases/download/v0.11.0/SHA256SUMS-0.11.0.txt).
+2. Finish recordings, close Notewll and run the installer. Existing notes and preferences are preserved.
+3. Open Try Notewll and test your microphone; then test dictation in your chosen editor.
+4. Set writing behavior on Style. Additional speech languages require Optional features > Set up multilingual speech.
 
-Requirements: Windows 10/11 x64, .NET Framework 4.8 and device permission for the selected audio sources. Standard installation and speech do not need Python, Docker, a cloud API key or an account. Additional models/runtimes can require downloads. The preview installer is unsigned; signed automatic updates are not configured.
+The multilingual Whisper base model is about 145 MB; its Python environment and packages need additional disk/RAM. Models download only during optional setup. The Windows preview is unsigned and does not enable signing-based automatic installation.
 
-## Privacy and scope
+## Privacy and acceptance
 
-The Windows app processes speech and notes locally. Dictation audio is held in memory; deliberately recorded notes save audio and text under `%LOCALAPPDATA%\LocalDictation\Notes`. The optional browser demo is separate and may use its browser provider's speech service. Exported PDFs can be edited externally and are not signed evidence. Encrypted snapshots require the same Windows account/PC; keep ZIP backups for migration.
+The Windows app processes speech and notes locally. Deliberately recorded notes retain audio and text in the existing LocalDictation data folder. Compatibility installation identifiers and a LocalDictation.exe alias preserve older shortcuts. The separate browser demo may use its browser provider's speech service.
 
-No perfect correction, universal recognition accuracy, voice authentication, or platform-wide cross-app compatibility is claimed. Physical microphone capture and desktop insertion need normal-desktop acceptance. No macOS or mobile build is supplied.
+No universal recognition accuracy, perfect speaker authentication, cross-app compatibility or Microsoft Store certification is claimed. Real microphone/call capture, desktop insertion, multilingual accuracy, mixed-DPI hardware and Narrator require normal-desktop acceptance. Existing experimental macOS source is retained in this repository; this release supplies the Windows installer.
 
 ## Build and verify
 
 ```powershell
 .\scripts\build_setup.ps1
 python -m pip install -r requirements-dev.txt
-python -m pytest tests -q -k "not live_default_microphone_captures_audio and not live_missing_named_microphone_falls_back_and_still_captures"
+python -m pytest tests -q -k "not test_live_default_microphone_captures_audio and not test_live_missing_named_microphone_falls_back_and_still_captures and not test_transcription_and_gpu_probe_request_hidden_console_windows"
 ```
 
-Source includes the native app, offline installer build, speech workers and regression checks. Generated installers belong in Releases, not the source tree. [Release notes](RELEASE_NOTES.md) · [Technical verification](verification/SMART_SENTENCE_CLEANUP.md) · [Improvement roadmap](IMPROVEMENT_ROADMAP.md) · [Third-party notices](THIRD_PARTY_NOTICES.md).
+Store packaging checks run when a local MSIX has been built with scripts/build_store.ps1. Installers belong in GitHub Releases, not the source tree. Screenshots use demonstration data.
+
+[Release notes](RELEASE_NOTES.md) ? [Release verification](verification/RELEASE_0.11.0.md) ? [Third-party notices](THIRD_PARTY_NOTICES.md).

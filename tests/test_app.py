@@ -59,6 +59,15 @@ def test_cleanup_scratch_that_keeps_earlier_sentences():
     assert clean("The report is final. Book Tuesday scratch that book Wednesday") == "The report is final. Book Wednesday."
 
 
+def test_cleanup_keeps_later_restarted_phrase():
+    assert clean("So I just wanted to I just want to remove that small part") == "So I just want to remove that small part."
+    assert clean("We wanted to we want to leave") == "We want to leave."
+    assert clean("I wanted to you want to leave") == "I wanted to you want to leave."
+    assert clean("I don't want to I want to leave") == "I don't want to I want to leave."
+    assert clean('He said "I just wanted to I just want to remove it".') == 'He said "I just wanted to I just want to remove it".'
+    assert clean("Please delete last two words") == "Please delete last two words."
+
+
 def test_cleanup_spoken_swap_with_comma():
     assert clean("Meet on Tuesday, I mean Wednesday at 3.") == "Meet on Wednesday at 3."
 
@@ -282,7 +291,7 @@ def test_live_actual_keyboard_insertion():
 def test_floating_toolbar_buttons_focus_and_edge_snap():
     result = run("--toolbar-smoke")
     assert result.returncode == 0, result.stderr
-    assert result.stdout == "toolbar-ok|buttons=3|no-focus-steal|edge-snap"
+    assert result.stdout == "toolbar-ok|buttons=4|handsfree-start-stop|no-focus-steal|edge-snap"
 
 
 def test_automatic_note_details_respect_manual_title():

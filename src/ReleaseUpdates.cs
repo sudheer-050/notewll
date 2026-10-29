@@ -37,6 +37,7 @@ namespace Notewll
         }
         public static async Task<string> AvailableVersion(Config config)
         {
+            if (StoreDistribution.Enabled) return null;
             if (String.IsNullOrWhiteSpace(config.UpdateManifestUrl) || String.IsNullOrWhiteSpace(config.UpdatePublisherThumbprint)) return null;
             var manifest = await FetchManifest(config); return new Version(manifest.Version) > typeof(Config).Assembly.GetName().Version ? manifest.Version : null;
         }
@@ -55,12 +56,18 @@ namespace Notewll
             }
             finally { Marshal.DestroyStructure(pointer, typeof(FileInfoTrust)); Marshal.FreeHGlobal(pointer); }
         }
+        public static void OpenDownloads(IWin32Window owner)
+        {
+            if (StoreDistribution.Enabled) { StoreDistribution.OpenUpdates(); return; }
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://github.com/sudheer-050/notewll/releases", UseShellExecute = true }); }
+            catch (Exception ex) { MessageBox.Show(owner, "Could not open GitHub Releases: " + ex.Message, "Get Notewll installer"); }
+        }
         public static async Task Check(IWin32Window owner, Config config)
         {
+            if (StoreDistribution.Enabled) { StoreDistribution.OpenUpdates(); return; }
             if (String.IsNullOrWhiteSpace(config.UpdateManifestUrl) || String.IsNullOrWhiteSpace(config.UpdatePublisherThumbprint))
             {
-                try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo { FileName = "https://github.com/sudheer-050/notewll/releases", UseShellExecute = true }); }
-                catch (Exception ex) { MessageBox.Show(owner, "Could not open GitHub Releases: " + ex.Message, "Check for updates"); }
+                OpenDownloads(owner);
                 return;
             }
             string target = null;

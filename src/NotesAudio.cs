@@ -112,7 +112,12 @@ namespace Notewll
             {
                 client = CoreAudio.Open(output, endpoint);
                 var format = new WinMM.WaveFormat { tag = 1, channels = 1, samplesPerSec = 16000, avgBytesPerSec = 32000, blockAlign = 2, bitsPerSample = 16 };
-                client.Initialize(0, 0x88000000u | (output ? 0x20000u : 0), 10000000, 0, ref format, IntPtr.Zero);
+                try { client.Initialize(0, 0x88000000u | (output ? 0x20000u : 0), 10000000, 0, ref format, IntPtr.Zero); }
+                catch (Exception ex)
+                {
+                    if (output) throw;
+                    throw new System.IO.IOException("Windows could not open the microphone (0x" + ex.HResult.ToString("X8") + "). Try another microphone in Recording devices or check Windows microphone access.", ex);
+                }
                 object obj; var iid = typeof(CoreAudio.Capture).GUID; client.GetService(ref iid, out obj); capture = (CoreAudio.Capture)obj;
             }
             catch { Dispose(); throw; }

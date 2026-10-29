@@ -8,8 +8,10 @@ using System.Web.Script.Serialization;
 
 [assembly: System.Reflection.AssemblyTitle("Notewll")]
 [assembly: System.Reflection.AssemblyProduct("Notewll")]
-[assembly: System.Reflection.AssemblyVersion("0.10.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("0.10.0.0")]
+#if !STORE_BUILD
+[assembly: System.Reflection.AssemblyVersion("0.11.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("0.11.0.0")]
+#endif
 
 namespace Notewll
 {
@@ -36,6 +38,7 @@ namespace Notewll
 
         public string Hotkey { get; set; }
         public string NotesHotkey { get; set; }
+        public string MeetingHotkey { get; set; }
         public string NotesSource { get; set; }
         public string MeetingSource { get; set; }
         public int ToolbarX { get; set; }
@@ -43,6 +46,14 @@ namespace Notewll
         // "system-default" or the exact name of a capture device from the settings list.
         public string Microphone { get; set; }
         public bool CleanupEnabled { get; set; }
+        public string CleanupLevel { get; set; }
+        public string SpeechLanguage { get; set; }
+        public bool RichSnippetPaste { get; set; }
+        public bool MeetingReminders { get; set; }
+        public int DictionarySort { get; set; }
+        public int SnippetSort { get; set; }
+        public bool AppStylesEnabled { get; set; }
+        public string AppWritingStyles { get; set; }
         public bool SmartCleanupEnabled { get; set; }
         public bool QualityEnabled { get; set; }
         public bool AccurateDictationEnabled { get; set; }
@@ -91,6 +102,7 @@ namespace Notewll
         public Config Copy() { var json = new JavaScriptSerializer(); var copy = json.Deserialize<Config>(json.Serialize(this)); if (Personalization != null) copy.Personalization = Personalization.Select(rule => rule.Copy()).ToList(); return copy; }
         public Config()
         {
+            CleanupLevel = "Standard"; SpeechLanguage = "en"; AppWritingStyles = "outlook=Email\r\nslack=Chat\r\nms-teams=Chat\r\ncode=Code\r\ncursor=Code";
             BallSizePercent=100; BallExpandedSizePercent=100; BallImagePath="";
             BallAppearance="Moon"; BallGravity="Earth"; BallColorMode="Original colors"; BallColor1="#B9C1CB"; BallColor2="#F2F0D9"; BallGradientAngle=45;
             TypingWordsPerMinute = 40;
@@ -98,7 +110,7 @@ namespace Notewll
             NotesSort = "Newest"; ExportFormat = "PDF"; WritingStyle = "Standard";
             UpdateManifestUrl = UpdatePublisherThumbprint = ""; Theme = "System"; ShowToolbar = true; ShowVoiceIndicator = false; ReduceNoise = true; ReducedMotion = false; NoteMicrophoneId = NoteOutputId = ""; Personalization = new List<PersonalRule>();
             SmartCleanupEnabled = false;
-            Hotkey = "F8"; NotesHotkey = "Ctrl+Shift+N"; NotesSource = "Microphone"; MeetingSource = "Both"; ToolbarX = ToolbarY = Int32.MinValue; Microphone = DefaultMic; CleanupEnabled = true; AutoPaste = true; LiveWriting = true; PasteMethod = "Auto"; StartWithWindows = false; AutoStartStt = true;
+            Hotkey = "F8"; NotesHotkey = "Ctrl+Shift+N"; MeetingHotkey = "Ctrl+Shift+M"; NotesSource = "Microphone"; MeetingSource = "Both"; ToolbarX = ToolbarY = Int32.MinValue; Microphone = DefaultMic; CleanupEnabled = true; AutoPaste = true; LiveWriting = true; PasteMethod = "Auto"; StartWithWindows = false; AutoStartStt = true;
             SttUrl = "http://127.0.0.1:5000";
             SttLauncher = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @"Documents\projects\ollama-personal-model\holly_server.py");
             SttPythonw = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Programs\Python\Python310\pythonw.exe");
@@ -120,6 +132,7 @@ namespace Notewll
                 var legacy = serializer.Deserialize<Dictionary<string, object>>(json);
                 if (!legacy.ContainsKey("AccurateDictationEnabled")) value.AccurateDictationEnabled = value.QualityEnabled;
                 if (!legacy.ContainsKey("NotesHotkey") && legacy.ContainsKey("NotesMicrophoneHotkey")) value.NotesHotkey = Convert.ToString(legacy["NotesMicrophoneHotkey"]);
+                if (!legacy.ContainsKey("MeetingHotkey")) value.MeetingHotkey = new[] { "Ctrl+Shift+M", "F9", "F10" }.First(key => key != Shortcut.Format(Shortcut.Parse(value.Hotkey)) && key != Shortcut.Format(Shortcut.Parse(value.NotesHotkey)));
                 if (!legacy.ContainsKey("SetupGuideSeen")) value.SetupGuideSeen = true;
                 if (!legacy.ContainsKey("ShowVoiceIndicator")) value.ShowVoiceIndicator = true;
                 value.Validate();
@@ -141,6 +154,10 @@ namespace Notewll
 
         public void Validate()
         {
+            if (CleanupLevel != "Light" && CleanupLevel != "Standard") throw new InvalidDataException("Choose Light or Standard cleanup.");
+            WritingProfiles.Validate(AppWritingStyles);
+            if (DictionarySort < 0 || DictionarySort > 3 || SnippetSort < 0 || SnippetSort > 3) throw new InvalidDataException("Choose a valid library sort order.");
+            if (!SpeechLanguages.Codes.Contains(SpeechLanguage)) throw new InvalidDataException("Choose a supported speech language.");
             SmartCleanupEnabled = false; // Retired preference; old settings must not enable sentence rewriting.
             BallColorMode=BallAppearance=="Color" ? "Solid color" : BallAppearance=="Gradient" ? "Gradient" : "Original colors"; // Legacy field: appearance now determines the finish.
             if(!Regex.IsMatch(BallColor1??"","^#[0-9a-fA-F]{6}$") || !Regex.IsMatch(BallColor2??"","^#[0-9a-fA-F]{6}$")) throw new InvalidDataException("Choose valid ball colors.");
@@ -150,20 +167,21 @@ namespace Notewll
             if(BallSizePercent<BallCatalog.MinSizePercent(BallAppearance) || BallSizePercent>BallCatalog.MaxSizePercent(BallAppearance)) throw new InvalidDataException("Choose a ball size within the slider range.");
             if(BallImagePath==null) BallImagePath="";
             if(Array.IndexOf(BallCatalog.Gravities,BallGravity)<0) throw new InvalidDataException("Choose a valid ball gravity.");
-            if ((QualityEnabled || AccurateDictationEnabled) && !File.Exists(QualityPython)) throw new InvalidDataException("Run scripts/setup_accuracy.ps1 to prepare the local speech environment before enabling it.");
+            if ((QualityEnabled || AccurateDictationEnabled) && !File.Exists(QualityPython)) throw new InvalidDataException("Set up speech in Preferences > Storage > Optional features before enabling it in Writing.");
             Hotkey = Shortcut.Format(Shortcut.Parse(Hotkey));
             NotesHotkey = Shortcut.Format(Shortcut.Parse(NotesHotkey));
+            MeetingHotkey = Shortcut.Format(Shortcut.Parse(MeetingHotkey));
             if (Personalization == null) Personalization = new List<PersonalRule>();
             if (Array.IndexOf(new[] { "Newest", "Oldest", "Title", "Longest" }, NotesSort) < 0) throw new InvalidDataException("Choose a valid note sort order.");
             if (Array.IndexOf(new[] { "PDF", "Word", "Excel", "CSV" }, ExportFormat) < 0) throw new InvalidDataException("Choose a valid export format.");
             if (Array.IndexOf(new[] { "Standard", "Chat", "Email", "Code" }, WritingStyle) < 0) throw new InvalidDataException("Choose a valid writing style.");
             if (TypingWordsPerMinute < 10 || TypingWordsPerMinute > 250) throw new InvalidDataException("Choose a typing speed from 10 to 250 words per minute.");
-            Theme = "System"; // Migrate saved appearances to the fixed application palette.
+            if (!ThemeColors.Valid(Theme)) Theme = "System";
             if (DeletedRetentionDays < 0 || DeletedRetentionDays > 3650) throw new InvalidDataException("Choose a valid retention period.");
             Uri updateUri; if (!String.IsNullOrWhiteSpace(UpdateManifestUrl) && (!Uri.TryCreate(UpdateManifestUrl, UriKind.Absolute, out updateUri) || updateUri.Scheme != "https")) throw new InvalidDataException("Update feeds must use HTTPS.");
             if (!String.IsNullOrWhiteSpace(UpdatePublisherThumbprint) && !Regex.IsMatch(UpdatePublisherThumbprint.Replace(" ", ""), "^[A-Fa-f0-9]{40}$")) throw new InvalidDataException("Use the 40-character Windows certificate thumbprint.");
             PersonalRule.Validate(Personalization);
-            if (Hotkey == NotesHotkey) throw new InvalidDataException("Choose a different shortcut for each action.");
+            if (new[] { Hotkey, NotesHotkey, MeetingHotkey }.Distinct().Count() != 3) throw new InvalidDataException("Choose a different shortcut for each action: Dictate, Note and Meeting.");
             if (Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, MeetingSource) < 0) throw new InvalidDataException("Choose valid meeting audio.");
             if (Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, NotesSource) < 0) throw new InvalidDataException("Choose a valid note audio source.");
             if (Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, PasteMethod) < 0) throw new InvalidDataException("Choose a supported paste method.");
@@ -171,12 +189,20 @@ namespace Notewll
             if (!IsLoopback(SttUrl)) throw new InvalidDataException("SttUrl must be a loopback http address (127.0.0.1 or localhost); audio never leaves this PC.");
         }
 
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
+        static extern bool MoveFileEx(string source, string destination, int flags);
         public void Save()
         {
             Validate();
             Directory.CreateDirectory(DirectoryPath);
             foreach (var rule in Personalization) Pronunciations.Commit(rule);
-            File.WriteAllText(FilePath, new JavaScriptSerializer().Serialize(this));
+            string temporary = FilePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            try
+            {
+                File.WriteAllText(temporary, new JavaScriptSerializer().Serialize(this));
+                if (!MoveFileEx(temporary, FilePath, 1 | 8)) throw new IOException("Could not save preferences: " + new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error()).Message);
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
             foreach (var rule in Personalization) rule.PronunciationPcm = null;
         }
     }
@@ -202,10 +228,11 @@ namespace Notewll
     {
         static readonly string Dup = "the|a|an|to|of|in|on|and|but|i|it|we|you|my|your|for|with|at|by";
 
-        public static string Clean(string input)
+        public static string Clean(string input) { return Clean(input, true); }
+        public static string Clean(string input, bool restarts)
         {
             if (String.IsNullOrWhiteSpace(input)) return "";
-            string text = Regex.Replace(SmartCleanup.Basic(input.Trim()), @"\s+", " ");
+            string text = Regex.Replace(restarts ? SmartCleanup.Basic(input.Trim()) : input.Trim(), @"\s+", " ");
 
             // "scratch that" retracts the clause (or previous sentence) before it.
             Match m;

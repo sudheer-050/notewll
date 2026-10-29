@@ -32,7 +32,7 @@ namespace Notewll
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); page.Controls.Add(layout);
             layout.Controls.Add(DialogUi.Text("Find supporting passages across saved conversations. Double-click a result to open its source. Suggested actions need your confirmation."), 0, 0);
             var searchRow = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true };
-            var query = new TextBox { Width = 260, AccessibleName = "Search by meaning" };
+            var query = new ThemedTextBox { Width = 260, AccessibleName = "Search by meaning" };
             var results = new ListBox { Dock = DockStyle.Fill, HorizontalScrollbar = true, IntegralHeight = false, AccessibleName = "Source passages" };
             var search = DialogUi.Button("Search by meaning", async (s, e) => {
                 if (String.IsNullOrWhiteSpace(query.Text) || Busy) return; SaveEdits(); searchRow.Enabled = false;
@@ -55,10 +55,14 @@ namespace Notewll
             using (var dialog = DialogUi.Create("Bookmarks", new Size(620, 420)))
             {
                 var list = new ListBox { Dock = DockStyle.Fill, AccessibleName = "Saved bookmarks" }; var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true };
-                Action refresh = () => { list.Items.Clear(); foreach (var b in note.Bookmarks) list.Items.Add(TimeSpan.FromSeconds(b.Seconds).ToString(@"hh\:mm\:ss") + " | " + b.Kind); }; refresh();
+                var empty = DialogUi.Text("No bookmarks yet. Mark an important moment while recording to find it here."); empty.Dock = DockStyle.Top;
+                Action refresh = () => { list.Items.Clear(); foreach (var b in note.Bookmarks) list.Items.Add(TimeSpan.FromSeconds(b.Seconds).ToString(@"hh\:mm\:ss") + " | " + b.Kind); empty.Visible = list.Items.Count == 0; foreach (Button button in footer.Controls) if (button.Text != "Close") button.Enabled = list.SelectedIndex >= 0; }; refresh();
                 footer.Controls.Add(DialogUi.Button("Jump to moment", (s, e) => { if (list.SelectedIndex < 0 || Busy) return; var b = note.Bookmarks[list.SelectedIndex]; SelectNote(note.Id); reviewingConversation = true; ApplyNotesView(); tabs.SelectedIndex = 1; StartPlayback((int)(b.Seconds * 1000)); dialog.Close(); }));
                 footer.Controls.Add(DialogUi.Button("Remove bookmark", (s, e) => { if (list.SelectedIndex < 0) return; try { lock (note) { note.Bookmarks.RemoveAt(list.SelectedIndex); store.Save(note); } refresh(); } catch (Exception ex) { MessageBox.Show(dialog, ex.Message); } }));
-                dialog.Controls.Add(list); dialog.Controls.Add(footer); ThemeColors.Apply(dialog, config.Theme); dialog.ShowDialog(FindForm());
+                list.SelectedIndexChanged += (s, e) => { foreach (Button button in footer.Controls) if (button.Text != "Close") button.Enabled = list.SelectedIndex >= 0; };
+                foreach (Button button in footer.Controls) button.Enabled = false;
+                footer.Controls.Add(DialogUi.Button("Close", (s, e) => dialog.Close()));
+                dialog.Controls.Add(list); dialog.Controls.Add(empty); dialog.Controls.Add(footer); ThemeColors.Apply(dialog, config.Theme); dialog.ShowDialog(FindForm());
             }
         }
         void ReviewTasks()
@@ -70,17 +74,22 @@ namespace Notewll
                 var draft = json.Deserialize<System.Collections.Generic.List<NoteTask>>(json.Serialize(note.Tasks));
                 draft.AddRange(ConversationTools.Suggest(note));
                 var grid = new DataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false, AllowUserToAddRows = false, AllowUserToDeleteRows = true, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill, AccessibleName = "Review suggested tasks" };
+                grid.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize; grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells; grid.RowHeadersVisible = false;
                 grid.Columns.Add(new DataGridViewCheckBoxColumn { DataPropertyName = "Confirmed", HeaderText = "Confirm", FillWeight = 35 });
                 grid.Columns.Add(new DataGridViewCheckBoxColumn { DataPropertyName = "Done", HeaderText = "Done", FillWeight = 30 });
                 foreach (string field in new[] { "Text", "Owner", "Due" }) grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = field, HeaderText = field, FillWeight = field == "Text" ? 180 : 60 });
                 grid.DataSource = new System.ComponentModel.BindingList<NoteTask>(draft);
-                var source = new TextBox { Dock = DockStyle.Bottom, Multiline = true, Height = 92, ReadOnly = true, ScrollBars = ScrollBars.Vertical, AccessibleName = "Original supporting statement" };
+                var source = new ThemedTextBox { Dock = DockStyle.Bottom, Multiline = true, Height = 92, ReadOnly = true, ScrollBars = ScrollBars.Vertical, AccessibleName = "Original supporting statement" };
                 Action refresh = () => { if (grid.CurrentRow == null) return; var task = grid.CurrentRow.DataBoundItem as NoteTask; if (task == null) return; var hit = new ConversationHit { Note = note, Segment = task.Segment }; source.Text = hit.ToString(); }; grid.SelectionChanged += (s, e) => refresh();
                 var footer = new FlowLayoutPanel { Dock = DockStyle.Bottom, AutoSize = true };
                 footer.Controls.Add(DialogUi.Button("Play source", (s, e) => { if (grid.CurrentRow != null) Jump(new ConversationHit { Note = note, Segment = ((NoteTask)grid.CurrentRow.DataBoundItem).Segment }); }));
                 footer.Controls.Add(DialogUi.Button("Save review", (s, e) => { grid.EndEdit(); foreach (var task in draft) if (!task.Confirmed) task.Done = false; var previous = note.Tasks; try { note.Tasks = draft; store.Save(note); dialog.Close(); } catch (Exception ex) { note.Tasks = previous; MessageBox.Show(dialog, ex.Message); } }, true));
                 footer.Controls.Add(DialogUi.Button("Cancel", (s, e) => dialog.Close()));
-                dialog.Controls.Add(grid); dialog.Controls.Add(source); dialog.Controls.Add(footer); dialog.Controls.Add(new Label { Dock = DockStyle.Top, Height = 72, Text = "Owners and dates are suggestions copied from speech, not verified facts. Edit them and tick Confirm to create a task. Delete a row to dismiss it. Originals remain unchanged.", AutoEllipsis = true }); ThemeColors.Apply(dialog, config.Theme); refresh(); dialog.ShowDialog(FindForm());
+                var emptyTasks = DialogUi.Text("No action items were found in this conversation."); emptyTasks.Dock = DockStyle.Top; emptyTasks.Visible = draft.Count == 0;
+                grid.Visible = draft.Count > 0;
+                dialog.Controls.Add(grid); dialog.Controls.Add(emptyTasks); dialog.Controls.Add(source); dialog.Controls.Add(footer); dialog.Controls.Add(new Label { Dock = DockStyle.Top, Height = 72, Text = "Owners and dates are suggestions copied from speech, not verified facts. Edit them and tick Confirm to create a task. Delete a row to dismiss it. Originals remain unchanged.", AutoEllipsis = true, Visible = draft.Count > 0 });
+                if (draft.Count == 0) { source.Visible = false; foreach (Button button in footer.Controls) { bool close = button.Text == "Cancel"; button.Visible = close; if (close) button.Text = "Close"; } dialog.ClientSize = new Size(650, 260); }
+                ThemeColors.Apply(dialog, config.Theme); refresh(); dialog.ShowDialog(FindForm());
             }
         }
     }

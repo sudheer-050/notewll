@@ -15,11 +15,13 @@ namespace Notewll
         static string WordKey(string value) { return value.ToLowerInvariant().Replace('\u2019', '\''); }
         static bool IsQuestionWord(string word) { return new[] { "what", "which", "how", "where", "when", "why", "who" }.Contains(word.Split('\'')[0]); }
         static bool IsRestartWord(string word) { return RestartWords.Contains(word) || Regex.IsMatch(word, @"^(?:what|which|how|where|when|why|who)'(?:s|re|d|ll|ve)$"); }
+        static bool OverlapsQuote(string text, int from, int to) { return Regex.Matches(text, "\"[^\"]*\"|“[^”]*”").Cast<Match>().Any(q => from < q.Index + q.Length && to > q.Index); }
         public static bool Enabled(Config config) { return false; }
         public static string Basic(string raw)
         {
             // Repeated grammatical prefixes of arbitrary length, rather than a list of complete sentences.
             string text = raw ?? "";
+            text = Regex.Replace(text, @"(?i)\b(I|we|you) (?:just )?(?:wanted|want) to,?\s+(\1 (?:just )?(?:wanted|want) to)\b", m => OverlapsQuote(text, m.Index, m.Index + m.Length) ? m.Value : m.Groups[2].Value);
             var matches = Regex.Matches(text, @"[\p{L}]+(?:['\u2019][\p{L}]+)*").Cast<Match>().ToArray();
             if (matches.Length > 512) return text;
             for (int i = 0; i < matches.Length; i++) for (int size = Math.Min(8, (matches.Length - i) / 2); size >= 2; size--)
@@ -28,6 +30,7 @@ namespace Notewll
                 if (!first.All(IsRestartWord) || first.Any(NeverDrop.Contains) || !first.Any(w => new[] { "i", "you", "we", "can", "could", "would", "what", "which" }.Contains(w) || IsQuestionWord(w))) continue;
                 if (!first.SequenceEqual(matches.Skip(i + size).Take(size).Select(m => WordKey(m.Value)))) continue;
                 int from = matches[i].Index, to = matches[i + size].Index;
+                if (OverlapsQuote(text, from, matches[i + size * 2 - 1].Index + matches[i + size * 2 - 1].Length)) continue;
                 if (Regex.IsMatch(text.Substring(from, matches[i + size * 2 - 1].Index + matches[i + size * 2 - 1].Length - from), @"[^\p{L}\p{N}\s,'\u2019-]")) continue;
                 return Basic(text.Remove(from, to - from));
             }
@@ -50,6 +53,7 @@ namespace Notewll
                         if (RestartWords.Contains(next) && !new[] { "a", "an", "the" }.Contains(next) || new[] { "makes", "made", "happens", "happened", "matters", "counts", "remains", "comes", "goes", "that", "this", "these", "those" }.Contains(next)) continue;
                     }
                     int from = matches[i].Index, to = matches[j].Index;
+                    if (OverlapsQuote(text, from, matches[j].Index + matches[j].Length)) continue;
                     if (Regex.IsMatch(text.Substring(from, to - from), @"[^\p{L}\p{N}\s,'\u2019-]")) continue;
                     return Basic(text.Remove(from, to - from));
                 }

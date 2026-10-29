@@ -179,7 +179,7 @@ namespace Notewll
                         while(watch.ElapsedMilliseconds<180) { Application.DoEvents(); System.Threading.Thread.Sleep(8); }
                         var after=((Bitmap)Field(pickerPreview,"skin")).GetPixel(90,90);
                         Require(before.ToArgb()!=after.ToArgb() && picker.SelectedHex=="#35B5E2","Color range does not update its live preview.");
-                        Require(((Control)pickerPreview).Controls.OfType<DockButton>().Count()==3,"Expanded tray is missing from the picker preview.");
+                        Require(((Control)pickerPreview).Controls.OfType<DockButton>().Count()==4,"Expanded tray is missing a recording action in the picker preview.");
                         foreach(Control control in picker.Controls) control.PerformLayout();
                         Snapshot(picker,Path.Combine(root,"live-color-picker.png")); picker.Close();
                         Require((string)Field(hub,"firstColor")=="#E64573","Unconfirmed picker changes altered preferences.");

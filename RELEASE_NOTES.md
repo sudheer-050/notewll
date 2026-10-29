@@ -1,4 +1,35 @@
-﻿# Notewll 0.10.0 — Speak naturally. Keep the words that matter.
+﻿# Notewll 0.11.0 - a simpler Windows workspace
+
+Unsigned Windows x64 preview. Standard offline English speech is included in the installer.
+
+- Home uses a compact Create menu: Dictate, Note, Meeting and Conversation. Analytics stay expanded, and Try Notewll opens the local editor.
+- History focuses on saved work with search, category filters and entry actions.
+- Dictionary and Snippets have matching centered search fields and clean two-column tables. Entries save immediately; select rows to edit, remove or export. Sort, favorites and the duplicate sentence-preview area are removed.
+- Dropdown menus use consistent spacing, rounded highlights, selected-option marks and light/dark styling.
+- Style centralizes raw text, light cleanup, modified text and app-specific writing preferences.
+- Optional exact-trigger formatted snippets, reviewed correction suggestions, local voice-edit commands and local ICS meeting reminders.
+- Optional multilingual speech uses a separately installed local model. Standard installation remains offline English.
+- Backend fixes prevent cascading replacements and duplicate formatting, preserve committed notes when saving fails, validate imports atomically and reduce repeated startup history scans.
+
+## Downloads
+
+- Notewll-Setup-0.11.0.exe: full Windows x64 installer. Existing notes and preferences are preserved.
+- Notewll-Setup.exe: the same installer with a convenient filename.
+- SHA256SUMS-0.11.0.txt: SHA-256 checksums.
+
+## Verification and limits
+
+The applicable local suite passes 177 tests, with 3 skipped and 3 excluded checks. The excluded checks cover two physical microphone tests and a legacy test for the separate Holly repository. Final release validation is recorded in verification/RELEASE_0.11.0.md. Screenshots use isolated demonstration data.
+
+Real microphone/call capture, cross-app insertion, multilingual accuracy, mixed-DPI hardware and Narrator still need desktop acceptance. Local voice editing supports explicit commands with a preview, not general AI rewriting. Calendar import accepts individual timed events, not recurring series or account sync. Formatted snippet paste is opt-in and clipboard restoration is best effort.
+
+This is an unsigned preview, not a certified Microsoft Store release. No Store submission is made. Signing-based automatic installation is not enabled.
+
+[Product and screenshots](https://notewll.myhai.org/) ? [User guide](https://github.com/sudheer-050/notewll/blob/v0.11.0/USER_GUIDE.md)
+
+---
+
+# Notewll 0.10.0 — Speak naturally. Keep the words that matter.
 
 Local dictation, voice notes and meeting transcripts for Windows.
 
@@ -34,25 +65,6 @@ The text-mode update passed 164 automated checks, with 2 skipped checks and 2 ex
 
 [Product, demo and screenshots](https://notewll.myhai.org/) · [User guide](https://github.com/sudheer-050/notewll/blob/main/USER_GUIDE.md) · [Source](https://github.com/sudheer-050/notewll)
 
-## macOS companion app (0.10.0, Phase 1 preview)
-
-A first macOS build lives under `macos/`, versioned 0.10.0 to match this
-release. It is a from-scratch native reimplementation (Swift/AppKit), not a
-port of this repo's C# source — only the core dictate loop is covered so
-far:
-
-- One global hotkey (default: Right Option, hold to talk)
-- Offline transcription via a bundled Vosk small English model (same engine
-  this app uses as its zero-setup default on Windows)
-- Text injection into the focused app (paste, with direct-typing fallback)
-- Menu-bar icon, Settings (hotkey rebind, mic picker, start-at-login)
-
-Not yet covered: Notes/Meeting modes, the Accurate/Enhanced ASR tiers,
-hands-free + voice matching, semantic search, the floating indicator, and
-most of the settings surface. Builds as an unsigned `.dmg` via GitHub
-Actions (`.github/workflows/macos-build-dmg.yml`) since the build requires
-macOS/Xcode and no Mac was available locally to produce it. See
-`macos/README.md` for build/run/permission instructions.
 
 ---
 

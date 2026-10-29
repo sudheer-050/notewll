@@ -15,7 +15,7 @@ namespace Notewll
                 base.WndProc(ref message);
             }
         }
-        readonly PageHost content = new PageHost { Dock = DockStyle.Fill, TabStop = false };
+        readonly PageHost content = new PageHost { Dock = DockStyle.Fill, TabStop = false, SizeMode = TabSizeMode.Fixed, ItemSize = new Size(1, 1), Multiline = true };
         readonly FlowLayoutPanel navigation = new FlowLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, WrapContents = true, Margin = Padding.Empty, Padding = new Padding(0, 0, 0, 12) };
         public TabControl.TabPageCollection TabPages { get { return content.TabPages; } }
         public int SelectedIndex { get { return content.SelectedIndex; } set { content.SelectedIndex = value; } }
@@ -39,7 +39,7 @@ namespace Notewll
             while (navigation.Controls.Count > 0) { var old = navigation.Controls[0]; navigation.Controls.Remove(old); old.Dispose(); }
             foreach (TabPage page in TabPages)
             {
-                var button = new HubButton { Text = page.Text, Font = Font, AccessibleName = page.Text, AccessibleRole = AccessibleRole.PageTab, Margin = new Padding(0, 0, 8, 4), Tag = page };
+                var button = new HubButton { Text = page.Text, Font = Font, AccessibleName = page.Text, AccessibleRole = AccessibleRole.PageTab, Margin = new Padding(0, 0, 6, 4), Tag = page };
                 button.Click += (s, e) => SelectedTab = page; navigation.Controls.Add(button);
             }
             SizeButtons(); RefreshSelection(); navigation.ResumeLayout(true);
@@ -51,7 +51,7 @@ namespace Notewll
             foreach (HubButton button in navigation.Controls)
             {
                 button.Font = Font;
-                button.Size = new Size(TextRenderer.MeasureText(button.Text, Font).Width + (int)(32 * scale), Math.Max(Font.Height + (int)(16 * scale), (int)(38 * scale)));
+                button.Size = new Size(TextRenderer.MeasureText(button.Text, Font).Width + (int)(20 * scale), Math.Max(Font.Height + (int)(16 * scale), (int)(38 * scale)));
             }
         }
         void RefreshSelection()

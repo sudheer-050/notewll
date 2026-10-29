@@ -50,7 +50,7 @@ namespace Notewll
         SpeakingProgress speakingProgress;
         void BuildSpeakingProgress(Panel page)
         {
-            var card = Card(page, 616, 248);
+            var card = Card(page, 780, 248); habitCard = card;
             Label(card, "Your dictation habit", 22, 12, 700, 30, 14, true, Ink);
             speakingMetrics = Label(card, "", 22, 50, 710, 32, 12, true, Ink);
             speakingMilestone = Label(card, "", 22, 88, 710, 30, 10, false, Ink);
@@ -61,7 +61,7 @@ namespace Notewll
                 UpdateTranscript(String.Join(" ", segments.Select(x => x.RawText)), String.Join(" ", segments.Select(x => x.Text)));
                 SetHomePractice(true, true);
             });
-            Button(card, "Try dictation", 254, 192, 210, (s, e) => SetHomePractice(true, true));
+            Button(card, "Open dictation editor", 254, 192, 210, (s, e) => SetHomePractice(true, true));
             card.Resize += (s, e) => {
                 int width = card.ClientSize.Width - (int)(44 * uiScale);
                 speakingMetrics.Width = speakingMilestone.Width = speakingDetail.Width = width;

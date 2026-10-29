@@ -5,14 +5,13 @@ namespace Notewll
 {
     sealed partial class SettingsForm
     {
-        readonly ComboBox correctionMode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Text mode" };
-        void BuildCorrectionModes(Panel writing)
+        readonly ComboBox correctionMode = new ThemedComboBox { DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "Text mode" };
+        void InitializeCorrectionModes()
         {
-            Label(writing, "Text mode", 20, 12, 620, 24, 11, true, Ink);
-            correctionMode.Items.AddRange(new object[] { "Raw text", "Modified text" });
-            correctionMode.SelectedIndex = source.CleanupEnabled ? 1 : 0;
-            Setting(writing, correctionMode, 42);
-            Label(writing, "Raw text keeps the recognized words, including fillers and repeats.\nModified text removes fillers and repeated starts, with basic formatting.\nSpeech recognition itself may still mishear words or supply punctuation.", 20, 80, 620, 66, 9, false, Muted);
+            
+            correctionMode.Items.AddRange(new object[] { "Raw text", "Modified text", "Light cleanup" });
+            correctionMode.SelectedIndex = !source.CleanupEnabled ? 0 : source.CleanupLevel == "Light" ? 2 : 1;
+            
             correctionMode.SelectedIndexChanged += (s, e) => {
                 cleanup.Checked = correctionMode.SelectedIndex != 0;
                 MarkDirty(); RefreshCleaned();
@@ -21,7 +20,10 @@ namespace Notewll
         Config PracticeConfig()
         {
             var draft = source.Copy(); draft.CleanupEnabled = cleanup.Checked; draft.SmartCleanupEnabled = false;
+            draft.AccurateDictationEnabled = accurateMode.Checked; draft.QualityEnabled = quality.Checked; draft.ReduceNoise = noiseChoice.Checked;
             draft.WritingStyle = writingStyle.SelectedItem == null ? source.WritingStyle : writingStyle.Text;
+            draft.CleanupLevel = correctionMode.SelectedIndex == 2 ? "Light" : "Standard";
+            draft.SpeechLanguage = SpeechLanguages.Codes[Math.Max(0, speechLanguage.SelectedIndex)];
             draft.Personalization = pendingRules ?? source.Personalization; return draft;
         }
         void ApplyPracticeCorrection()

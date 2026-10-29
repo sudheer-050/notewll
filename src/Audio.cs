@@ -66,6 +66,16 @@ namespace Notewll
     // 16 kHz mono 16-bit PCM captured in memory only; nothing is written to disk.
     sealed class MicRecorder : IDisposable
     {
+        static readonly object listeningGate = new object();
+        static readonly HashSet<MicRecorder> listening = new HashSet<MicRecorder>();
+        public static event Action ListeningChanged;
+        public static bool AnyListening { get { lock (listeningGate) return listening.Count > 0; } }
+        public static int ListeningLevel { get { lock (listeningGate) { int level = 0; foreach (var mic in listening) level = Math.Max(level, mic.SoundLevel); return level; } } }
+        static void MarkListening(MicRecorder mic, bool active)
+        {
+            bool changed; lock (listeningGate) changed = active ? listening.Add(mic) : listening.Remove(mic);
+            if (changed) { var callback = ListeningChanged; if (callback != null) callback(); }
+        }
         const int Rate = 16000, BufferCount = 4, BufferBytes = 3200;
         readonly int deviceIndex;
         readonly string deviceName;
@@ -125,6 +135,7 @@ namespace Notewll
             catch { Release(); throw; }
             pump = new Thread(Pump) { IsBackground = true };
             pump.Start();
+            MarkListening(this, true);
         }
 
         void Drain(bool requeue)
@@ -160,6 +171,7 @@ namespace Notewll
         // Stops capture and returns the PCM bytes (16 kHz mono 16-bit).
         public byte[] Stop()
         {
+            MarkListening(this, false);
             running = false; signal.Set();
             if (pump != null) pump.Join(1000);
             if (handle != IntPtr.Zero) { WinMM.waveInStop(handle); WinMM.waveInReset(handle); Drain(false); }

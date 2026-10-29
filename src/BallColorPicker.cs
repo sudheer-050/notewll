@@ -65,7 +65,7 @@ namespace Notewll
     {
         readonly BallColorRange range=new BallColorRange();
         readonly BallPreview preview=new BallPreview();
-        readonly TextBox hex=new TextBox { Width=110,MaxLength=7,AccessibleName="Hex color" };
+        readonly TextBox hex=new ThemedTextBox { Width=110,MaxLength=7,AccessibleName="Hex color" };
         readonly Timer refresh=new Timer { Interval=40 };
         readonly Config draft;
         readonly bool second;
@@ -75,11 +75,13 @@ namespace Notewll
         {
             draft=config.Copy(); second=isSecond;
             Text="Choose ball color"; Icon=AppLogo.Icon; Font=new Font("Segoe UI",10);
-            AutoScaleDimensions=new SizeF(96,96); AutoScaleMode=AutoScaleMode.Dpi; ClientSize=new Size(900,430); MinimumSize=new Size(840,430); StartPosition=FormStartPosition.CenterParent; ShowInTaskbar=false;
+            AutoScaleDimensions=new SizeF(96,96); AutoScaleMode=AutoScaleMode.None; ClientSize=new Size(900,430); MinimumSize=new Size(840,430); StartPosition=FormStartPosition.CenterParent; ShowInTaskbar=false;
             var root=new TableLayoutPanel { Dock=DockStyle.Fill,Padding=new Padding(18),ColumnCount=1,RowCount=3 };
+            root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
             root.RowStyles.Add(new RowStyle(SizeType.Percent,100)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); root.RowStyles.Add(new RowStyle(SizeType.AutoSize)); Controls.Add(root);
             var main=new TableLayoutPanel { Dock=DockStyle.Fill,ColumnCount=2,RowCount=1,Margin=Padding.Empty };
             main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50)); main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,50)); root.Controls.Add(main,0,0);
+            main.RowStyles.Add(new RowStyle(SizeType.Percent,100));
             range.Dock=DockStyle.Fill; range.Margin=new Padding(0,0,18,16); main.Controls.Add(range,0,0);
             preview.Dock=DockStyle.Fill; preview.Margin=new Padding(0,0,0,16); main.Controls.Add(preview,1,0);
             var values=new FlowLayoutPanel { Dock=DockStyle.Fill,WrapContents=false,AutoSize=true }; values.Controls.Add(new Label { Text="Hex color",AutoSize=true,Padding=new Padding(0,5,8,0) }); values.Controls.Add(hex);
@@ -92,6 +94,7 @@ namespace Notewll
             refresh.Tick+=(s,e)=>{ refresh.Stop(); UpdatePreview(); };
             range.SelectColor(ColorTranslator.FromHtml(second?draft.BallColor2:draft.BallColor1));
             ThemeColors.Apply(this,config.Theme); preview.BackColor=ThemeColors.Card; preview.ForeColor=ThemeColors.Ink;
+            using(var graphics=CreateGraphics()) { float scale=graphics.DpiX/96f; if(scale!=1) Scale(new SizeF(scale,scale)); }
             Shown+=(s,e)=>UpdatePreview();
         }
         void UpdatePreview()

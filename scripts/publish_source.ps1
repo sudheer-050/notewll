@@ -1,7 +1,7 @@
 ﻿$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $repository = 'sudheer-050/notewll'
-$snapshot = Join-Path $root 'release\notewll-0.10.0'
+$snapshot = Join-Path $root 'release\notewll-0.11.0'
 function Run([string]$Program, [string[]]$Arguments) {
     & $Program @Arguments
     if ($LASTEXITCODE -ne 0) { throw "$Program failed. Source was not confirmed published." }

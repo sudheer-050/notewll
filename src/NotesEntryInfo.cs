@@ -63,8 +63,7 @@ namespace Notewll
                 var close = new HubButton { Text = "Close", Width = 120, Height = 38, Primary = true }; close.Click += (s, e) => dialog.Close(); footer.Controls.Add(close); dialog.CancelButton = close;
                 var copy = new HubButton { Text = "Copy details", Width = 150, Height = 38 }; copy.Click += (s, e) => { try { Clipboard.SetDataObject(entry.Title + Environment.NewLine + String.Join(Environment.NewLine, rows.Select(row => row.Key + ": " + row.Value)), true, 5, 100); copy.Text = "Copied"; } catch (Exception ex) { MessageBox.Show(dialog, "Could not copy: " + ex.Message); } }; footer.Controls.Add(copy);
                 dialog.Controls.Add(card); dialog.Controls.Add(footer); dialog.Controls.Add(heading); heading.SendToBack(); footer.SendToBack();
-                ThemeColors.Apply(dialog, "System");
-                float scale; using (var graphics = dialog.CreateGraphics()) scale = graphics.DpiX / 96f; if (scale != 1) dialog.Scale(new SizeF(scale, scale));
+                ThemeColors.Apply(dialog, ThemeColors.Mode);
                 dialog.ShowDialog(owner);
             }
         }

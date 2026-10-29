@@ -40,6 +40,7 @@ def vocabulary_prompt(values):
 class Worker:
     def __init__(self):
         self.model = self.encoder = None
+        self.model_name = "small.en"
 
     def run(self, request):
         if request.get("op") == "refine":
@@ -48,13 +49,18 @@ class Worker:
         import torch
         import whisper
         torch.set_num_threads(4)
-        if self.model is None:
+        language = request.get("language", "en")
+        if language not in {"en", "auto", "es", "fr", "de", "it", "pt", "hi", "te", "ta", "ja", "ko", "zh", "ar"}:
+            raise ValueError("Unsupported speech language")
+        model_name = "small.en" if language == "en" else "base"
+        if self.model is None or self.model_name != model_name:
             # Installed model required: never download during a recording.
             from pathlib import Path
-            path = Path.home() / ".cache/whisper/small.en.pt"
+            path = Path.home() / (".cache/whisper/" + model_name + ".pt")
             if not path.is_file():
-                raise RuntimeError("Install the Whisper small.en model first")
+                raise RuntimeError("Install the Whisper " + model_name + " model first")
             self.model = whisper.load_model(str(path), device="cpu")
+            self.model_name = model_name
         audio = np.frombuffer(base64.b64decode(request["pcm"]), dtype="<i2").astype(np.float32) / 32768
         if len(audio) == 0 or float(np.sqrt(np.mean(audio ** 2))) < 0.002:
             return {"text": "", "turns": []}
@@ -63,9 +69,9 @@ class Worker:
             return {"text": "", "turns": []}
         prompt = vocabulary_prompt(request.get("vocabulary"))
         if prompt:
-            tokenizer = whisper.tokenizer.get_tokenizer(self.model.is_multilingual, language="en", task="transcribe")
+            tokenizer = whisper.tokenizer.get_tokenizer(self.model.is_multilingual, language="en" if language == "auto" else language, task="transcribe")
             prompt = tokenizer.decode(tokenizer.encode(prompt)[:120])
-        result = self.model.transcribe(audio, language="en", fp16=False, temperature=0,
+        result = self.model.transcribe(audio, language=None if language == "auto" else language, task="transcribe", fp16=False, temperature=0,
                                        initial_prompt=prompt, carry_initial_prompt=True,
                                        condition_on_previous_text=False, word_timestamps=bool(request.get("voices")))
         turns = []

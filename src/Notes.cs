@@ -38,6 +38,7 @@ namespace Notewll
         public string UserName { get; set; }
         public string WrittenNotes { get; set; }
         public bool EditableTextInitialized { get; set; }
+        public bool VoiceDraft { get; set; }
         public string Summary { get; set; }
         public string Tags { get; set; }
         public string Project { get; set; }
@@ -47,6 +48,8 @@ namespace Notewll
         public string Status { get; set; }
         public string CaptureError { get; set; }
         public double DurationSeconds { get; set; }
+        public double? CaptureSeconds { get; set; }
+        public double? ProcessingSeconds { get; set; }
         public List<string> Participants { get; set; }
         public List<NoteSegment> Segments { get; set; }
         public NoteDocument() { Bookmarks = new List<NoteBookmark>(); Tasks = new List<NoteTask>(); Project = ""; Participants = new List<string>(); Segments = new List<NoteSegment>(); WrittenNotes = ""; Summary = Tags = ""; UserName = ""; }
@@ -86,8 +89,10 @@ namespace Notewll
     sealed class NoteStore
     {
         public readonly string Root;
+        readonly bool readOnly;
+        internal int ListReadCount;
         readonly object gate = new object();
-        public NoteStore(string root = null) { Root = Path.GetFullPath(root ?? Path.Combine(Config.DirectoryPath, "Notes")); }
+        public NoteStore(string root = null, bool readOnly = false) { Root = Path.GetFullPath(root ?? Path.Combine(Config.DirectoryPath, "Notes")); this.readOnly = readOnly; }
         public string Folder(NoteDocument note)
         {
             Guid id; if (!Guid.TryParseExact(note.Id, "N", out id)) throw new InvalidDataException("Invalid note identifier.");
@@ -106,6 +111,7 @@ namespace Notewll
         }
         public void Save(NoteDocument note)
         {
+            if (readOnly) throw new InvalidOperationException("This note store is open for read-only profiling.");
             lock (note) lock (gate)
             {
                 Validate(note);
@@ -117,23 +123,32 @@ namespace Notewll
         }
         static void AtomicWrite(string path, string text)
         {
-            string temporary = path + ".tmp";
-            File.WriteAllText(temporary, text, new UTF8Encoding(false));
-            // Keep the completed snapshot as a recovery copy if an overwrite is interrupted.
-            // File.Replace also copies ACL metadata, which restricted Windows accounts cannot do.
-            File.Copy(temporary, path, true);
+            string temporary = path + "." + Guid.NewGuid().ToString("N") + ".stage";
+            try
+            {
+                File.WriteAllText(temporary, text, new UTF8Encoding(false)); NotesData.CommitFile(temporary, path);
+                // The primary is committed first. A recovery-copy failure cannot invalidate a successful save.
+                try { File.WriteAllText(temporary, text, new UTF8Encoding(false)); NotesData.CommitFile(temporary, path + ".tmp"); }
+                catch (IOException) { } catch (UnauthorizedAccessException) { }
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
         }
+        static NoteDocument ReadSnapshot(string path)
+        { var value = new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Deserialize<NoteDocument>(File.ReadAllText(path)); Validate(value); return value; }
         public List<NoteDocument> List(bool recover = true)
         {
+            System.Threading.Interlocked.Increment(ref ListReadCount);
+            recover = recover && !readOnly;
             var notes = new List<NoteDocument>(); if (!Directory.Exists(Root)) return notes;
             foreach (string folder in Directory.GetDirectories(Root).Where(f => { Guid id; return Guid.TryParseExact(Path.GetFileName(f), "N", out id); }))
             {
-                string path = Path.Combine(folder, "note.json"); if (!File.Exists(path)) continue;
+                string path = Path.Combine(folder, "note.json"); if (!File.Exists(path) && !File.Exists(path + ".tmp")) continue;
                 try
                 {
                     NoteDocument note;
-                    try { note = new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Deserialize<NoteDocument>(File.ReadAllText(File.Exists(path + ".tmp") ? path + ".tmp" : path)); }
-                    catch (ArgumentException) { note = new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Deserialize<NoteDocument>(File.ReadAllText(path)); }
+                    try { note = ReadSnapshot(path); }
+                    catch (Exception ex) { if (!(ex is IOException) && !(ex is ArgumentException) && !(ex is InvalidOperationException)) throw; note = ReadSnapshot(path + ".tmp"); }
+                    if (note.Id != Path.GetFileName(folder)) throw new InvalidDataException("Note identity does not match its folder.");
                     Validate(note); Folder(note);
                     if (recover && (note.Status == "Recording" || note.Status == "Paused" || note.Status == "Transcribing")) { RecoverAudio(note); note.Status = "Interrupted - audio kept"; Save(note); }
                     notes.Add(note);
@@ -162,11 +177,13 @@ namespace Notewll
             Guid id; DateTime created;
             if (note == null || !Guid.TryParseExact(note.Id, "N", out id) || !DateTime.TryParse(note.CreatedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out created) || note.Participants == null || note.Segments == null || note.Segments.Count > 100000 || note.Mode != "Microphone" && note.Mode != "Computer" && note.Mode != "Both" || Double.IsNaN(note.DurationSeconds) || Double.IsInfinity(note.DurationSeconds) || note.DurationSeconds < 0) throw new InvalidDataException("Note metadata is invalid.");
             ConversationTools.Validate(note);
+            foreach (var timing in new[] { note.CaptureSeconds, note.ProcessingSeconds }) if (timing.HasValue && (Double.IsNaN(timing.Value) || Double.IsInfinity(timing.Value) || timing.Value < 0)) throw new InvalidDataException("Invalid dictation timing.");
             if (note.Segments.Any(s => s == null || s.StartFrame < 0 || s.Frames < 0 || s.StartFrame > Int64.MaxValue - s.Frames || s.TranscriptStartFrame < 0 || s.Source != "Microphone" && s.Source != "Computer" || s.SpeakerLabel != null && (s.SpeakerLabel.Length > 80 || s.SpeakerLabel.Any(Char.IsControl)))) throw new InvalidDataException("Note audio sections are invalid.");
             if (note.Segments.Any(s => s.VoiceId != null && s.VoiceId.Length > 80 || s.VoiceEmbedding != null && (s.VoiceEmbedding.Length != 256 || s.VoiceEmbedding.Any(v => Double.IsNaN(v) || Double.IsInfinity(v))))) throw new InvalidDataException("Note voice profiles are invalid.");
         }
         public int CleanupDeleted(int days)
         {
+            if (readOnly) return 0;
             if (days <= 0) return 0; int count = 0; string root = Path.Combine(Root, ".deleted"); if (!Directory.Exists(root)) return 0;
             foreach (string folder in Directory.GetDirectories(root))
             {
@@ -202,7 +219,7 @@ namespace Notewll
         public string SavedName
         {
             get { string path = Path.Combine(Root, "name.txt"); lock (gate) return File.Exists(path) ? File.ReadAllText(path).Trim() : ""; }
-            set { lock (gate) { Directory.CreateDirectory(Root); AtomicWrite(Path.Combine(Root, "name.txt"), value ?? ""); } }
+            set { if (readOnly) throw new InvalidOperationException("This note store is read-only."); lock (gate) { Directory.CreateDirectory(Root); AtomicWrite(Path.Combine(Root, "name.txt"), value ?? ""); } }
         }
         public static string Transcript(NoteDocument note)
         {
@@ -220,7 +237,7 @@ namespace Notewll
         public static string Speaker(NoteDocument note, NoteSegment segment)
         {
             if (!String.IsNullOrWhiteSpace(segment.VoiceId) && String.IsNullOrWhiteSpace(segment.SpeakerLabel)) return segment.VoiceId;
-            return !String.IsNullOrWhiteSpace(segment.SpeakerLabel) ? segment.SpeakerLabel + " [" + segment.Source + "]" : segment.Source == "Microphone" && !String.IsNullOrWhiteSpace(note.UserName) ? note.UserName : segment.Source == "Computer" ? "Computer audio" : "Microphone";
+            return !String.IsNullOrWhiteSpace(segment.SpeakerLabel) ? segment.SpeakerLabel + " [" + segment.Source + "]" : note.Kind == "Conversation" ? "Unassigned speaker" : segment.Source == "Microphone" && !String.IsNullOrWhiteSpace(note.UserName) ? note.UserName : segment.Source == "Computer" ? "Computer audio" : "Microphone";
         }
         public static string Markdown(NoteDocument note)
         {
