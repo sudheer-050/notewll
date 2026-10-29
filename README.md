@@ -18,6 +18,8 @@ Turn speech into text, catch a thought, and return to the conversation. Notewll 
 
 **Windows 10/11 x64 · English · 0.10.0 unsigned preview.** The installer includes the standard offline speech engine. Semantic search and voice matching use optional, separately installed local models.
 
+**macOS:** an early native build covering just the core dictate loop lives under [`macos/`](macos/README.md) (v0.10.0, unsigned, built via GitHub Actions since Xcode requires a Mac).
+
 ## New: speak through a restart
 
 Natural speech contains restarts. Your written sentence does not need to keep every one.

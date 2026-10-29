@@ -1,0 +1,69 @@
+name: Build macOS DMG
+
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - "macos-v*"
+    paths:
+      - "macos/**"
+
+defaults:
+  run:
+    working-directory: macos
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "16.1"
+
+      - name: Make scripts executable
+        run: chmod +x Scripts/*.sh
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Vendor Vosk (dylib + header + model)
+        run: Scripts/fetch_vosk.sh
+
+      - name: Headless correctness check (say -> Vosk)
+        run: |
+          set -euo pipefail
+          say -o /tmp/localdictation_test.wav --data-format=LEI16@16000 "testing one two three"
+          clang -I Vendor -L Vendor -lvosk -o /tmp/verify_vosk Scripts/verify_vosk.c
+          install_name_tool -add_rpath "$(pwd)/Vendor" /tmp/verify_vosk || true
+          DYLD_LIBRARY_PATH="$(pwd)/Vendor" /tmp/verify_vosk "Vendor/vosk-model-small-en-us-0.15" /tmp/localdictation_test.wav | tee /tmp/vosk_result.json
+          grep -qi "testing" /tmp/vosk_result.json
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (Release, ad-hoc signed)
+        run: |
+          xcodebuild \
+            -project LocalDictation.xcodeproj \
+            -scheme LocalDictation \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            build
+
+      - name: Package .dmg
+        run: Scripts/make_dmg.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LocalDictation-dmg
+          path: macos/LocalDictation.dmg
+          if-no-files-found: error
