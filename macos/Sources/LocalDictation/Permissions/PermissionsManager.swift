@@ -1,6 +1,7 @@
 import AVFoundation
 import ApplicationServices
 import AppKit
+import CoreGraphics
 import Foundation
 
 enum PermissionStatus {
@@ -37,8 +38,32 @@ final class PermissionsManager {
 
     /// Triggers the system prompt if not yet decided. Returns immediately;
     /// poll `inputMonitoringStatus()` to see when the user grants it.
+    ///
+    /// `CGRequestListenEventAccess()` alone is unreliable at getting the app
+    /// listed in System Settings > Privacy & Security > Input Monitoring --
+    /// in practice it's *attempting to create an actual event tap* that
+    /// makes macOS notice the process and add it to the list (even though
+    /// the attempt itself fails until the user grants access). So we do
+    /// both: call the official request API, then immediately try (and
+    /// discard) a real tap as the thing that actually registers us.
     func requestInputMonitoring() {
         CGRequestListenEventAccess()
+        probeEventTapForTCCRegistration()
+    }
+
+    private func probeEventTapForTCCRegistration() {
+        let mask: CGEventMask = 1 << CGEventType.keyDown.rawValue
+        let callback: CGEventTapCallBack = { _, _, event, _ in Unmanaged.passUnretained(event) }
+        if let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .listenOnly,
+            eventsOfInterest: mask,
+            callback: callback,
+            userInfo: nil
+        ) {
+            CGEvent.tapEnable(tap: tap, enable: false)
+        }
     }
 
     func accessibilityStatus() -> PermissionStatus {
