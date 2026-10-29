@@ -34,6 +34,25 @@ The text-mode update passed 164 automated checks, with 2 skipped checks and 2 ex
 
 [Product, demo and screenshots](https://notewll.myhai.org/) · [User guide](https://github.com/sudheer-050/notewll/blob/main/USER_GUIDE.md) · [Source](https://github.com/sudheer-050/notewll)
 
+## macOS companion app (0.10.0, Phase 1 preview)
+
+A first macOS build lives under `macos/`, versioned 0.10.0 to match this
+release. It is a from-scratch native reimplementation (Swift/AppKit), not a
+port of this repo's C# source — only the core dictate loop is covered so
+far:
+
+- One global hotkey (default: Right Option, hold to talk)
+- Offline transcription via a bundled Vosk small English model (same engine
+  this app uses as its zero-setup default on Windows)
+- Text injection into the focused app (paste, with direct-typing fallback)
+- Menu-bar icon, Settings (hotkey rebind, mic picker, start-at-login)
+
+Not yet covered: Notes/Meeting modes, the Accurate/Enhanced ASR tiers,
+hands-free + voice matching, semantic search, the floating indicator, and
+most of the settings surface. Builds as an unsigned `.dmg` via GitHub
+Actions (`macos/.github/workflows/build-dmg.yml`) since the build requires
+macOS/Xcode and no Mac was available locally to produce it. See
+`macos/README.md` for build/run/permission instructions.
 
 ---
 

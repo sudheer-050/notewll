@@ -1,0 +1,62 @@
+name: LocalDictation
+options:
+  bundleIdPrefix: com.gsudheer.localdictation
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "16.1"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGNING_ALLOWED: "YES"
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: "NO"
+    LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
+    SWIFT_OBJC_BRIDGING_HEADER: "Sources/LocalDictation/App/LocalDictation-Bridging-Header.h"
+    HEADER_SEARCH_PATHS: "Vendor"
+    LIBRARY_SEARCH_PATHS: "Vendor"
+    MARKETING_VERSION: "0.10.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  LocalDictation:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/LocalDictation
+      - path: Vendor/vosk_api.h
+        buildPhase: none
+      - path: Vendor/vosk-model-small-en-us-0.15
+        buildPhase: resources
+        type: folder
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.gsudheer.localdictation
+        PRODUCT_NAME: LocalDictation
+    info:
+      path: Sources/LocalDictation/Info.plist
+      properties:
+        LSUIElement: true
+        NSMicrophoneUsageDescription: "LocalDictation needs microphone access to transcribe your speech locally. Audio never leaves your Mac."
+        CFBundleShortVersionString: "0.10.0"
+        CFBundleVersion: "1"
+    dependencies:
+      - sdk: AVFoundation.framework
+      - sdk: ApplicationServices.framework
+      - sdk: Carbon.framework
+      - sdk: ServiceManagement.framework
+      - framework: Vendor/libvosk.dylib
+        embed: true
+        codeSign: true
+    preBuildScripts:
+      - name: "Vendor sanity check"
+        script: |
+          set -euo pipefail
+          test -f "${SRCROOT}/Vendor/libvosk.dylib" || { echo "error: Vendor/libvosk.dylib missing — run Scripts/fetch_vosk.sh before building."; exit 1; }
+          test -f "${SRCROOT}/Vendor/vosk_api.h" || { echo "error: Vendor/vosk_api.h missing — run Scripts/fetch_vosk.sh before building."; exit 1; }
+    postCompileScripts: []
+    scheme:
+      testTargets: []
+      gatherCoverageData: false
