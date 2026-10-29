@@ -7,6 +7,7 @@ Reviewed October 29, 2026. This is an unsigned preview, with no Microsoft Store 
 - UI audit: 210 captures across Light/Dark, compact/normal pages, open Create and settings dropdowns, and dialogs; zero layout findings. Screenshots use isolated demonstration data.
 - Focused checks cover row selection, bulk selection, search, immediate entry saving, rejected-save rollback, settings cancellation, atomic notes, command editing, calendar parsing, optional speech protocol and installer resources.
 - The settings smoke check uses isolated defaults and notes, so saved language/style preferences cannot change its expected output.
+- Update preflight checks validate the staged payload without requiring or changing an installed copy. The install guard remains in place for actual updates.
 - Store-specific packaging tests require a separately built local MSIX; a clean source checkout skips that artifact test. No MSIX is published by this GitHub release.
 
 Installer SHA256: `895a47678d25320d9048b90a1fde4d1ff0a41c603867581a04a40e45347eae09`.

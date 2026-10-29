@@ -4,7 +4,6 @@ $root = Split-Path -Parent $PSScriptRoot
 $destination = Join-Path $env:LOCALAPPDATA 'Programs\LocalDictation'
 $installed = Join-Path $destination 'Notewll.exe'
 $build = Join-Path $root 'build\Notewll.exe'
-if (-not (Test-Path -LiteralPath $installed) -and -not (Test-Path -LiteralPath (Join-Path $destination 'LocalDictation.exe'))) { throw 'Install the latest Notewll Setup first.' }
 $payload = @(
     @{ Source = $build; Name = 'Notewll.exe' },
     @{ Source = (Join-Path $root 'engine\quality_worker.py'); Name = 'engine\quality_worker.py' },
@@ -21,6 +20,7 @@ $speechDetector = $payload | Where-Object { $_.Name -eq 'engine\silero_vad.onnx'
 if (@($speechDetector).Count -ne 1 -or (Get-FileHash -LiteralPath $speechDetector.Source).Hash.ToLowerInvariant() -ne '1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3') { throw 'Speech detector integrity check failed.' }
 if (@($payload.Name | Select-Object -Unique).Count -ne $payload.Count) { throw 'Update payload contains duplicate destinations.' }
 if ($CheckOnly) { Write-Output ('update-preflight-ok|files=' + $payload.Count + '|applications=' + (($payload | Where-Object { $_.Name -like '*.exe' }).Name -join ',') + '|speech-detector=verified|installed-files=unchanged'); return }
+if (-not (Test-Path -LiteralPath $installed) -and -not (Test-Path -LiteralPath (Join-Path $destination 'LocalDictation.exe'))) { throw 'Install the latest Notewll Setup first.' }
 # Check access before closing the app. A denied update must leave it running.
 $probe = Join-Path $destination ('.notewll-write-check-' + [Guid]::NewGuid().ToString('N') + '.tmp')
 try { $stream = [IO.File]::Open($probe, 'CreateNew', 'Write', 'None'); $stream.Dispose() }

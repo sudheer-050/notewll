@@ -4,7 +4,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_update_preflight_checks_named_detector_without_touching_installation():
+def test_update_preflight_checks_named_detector_without_touching_installation(tmp_path, monkeypatch):
+    empty_appdata = tmp_path / "empty-appdata"
+    monkeypatch.setenv("LOCALAPPDATA", str(empty_appdata))
     result = subprocess.run(
         ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
          str(ROOT / 'scripts/install_quiet_dictation.ps1'), '-CheckOnly'],
@@ -17,3 +19,5 @@ def test_update_preflight_checks_named_detector_without_touching_installation():
     assert set(values['applications'].split(',')) == {'Notewll.exe', 'LocalDictation.exe'}
     assert values['speech-detector'] == 'verified'
     assert values['installed-files'] == 'unchanged'
+
+    assert not empty_appdata.exists()
