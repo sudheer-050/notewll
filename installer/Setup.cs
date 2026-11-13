@@ -12,14 +12,14 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-[assembly: AssemblyVersion("0.11.0.0")]
+[assembly: AssemblyVersion("0.11.1.0")]
 [assembly: AssemblyTitle("Notewll Setup")]
 [assembly: AssemblyProduct("Notewll")]
 namespace NotewllSetup
 {
     sealed class SetupForm : Form
     {
-        const string Version = "0.11.0", RegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\LocalDictation";
+        const string Version = "0.11.1", RegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\LocalDictation";
         const string ModelUrl = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip";
         const string RuntimeUrl = "https://github.com/alphacep/vosk-api/releases/download/v0.3.45/vosk-win64-0.3.45.zip";
         readonly string destination = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "LocalDictation");
@@ -58,8 +58,7 @@ namespace NotewllSetup
             {
                 if (!finished) { await Run(); return; }
                 if (uninstall) { Close(); return; }
-                try { Process.Start(new ProcessStartInfo { FileName = Path.Combine(destination, "Notewll.exe"), WorkingDirectory = destination, UseShellExecute = true }); Close(); }
-                catch (Exception ex) { status.Text = "Could not open the app: " + ex.Message + "\nTry the Notewll shortcut in the Start menu."; }
+                Close();
             };
             FormClosing += (s, e) => { if (busy) e.Cancel = true; };
             using (var graphics = CreateGraphics()) { float scale = graphics.DpiX / 96f; if (scale != 1) Scale(new SizeF(scale, scale)); }
@@ -115,6 +114,11 @@ namespace NotewllSetup
                     }
                 });
                 if (verified != null) { File.Delete(Path.Combine(destination, "native", ".installed")); File.Delete(Path.Combine(destination, "model-small-en-us", ".installed")); throw new IOException(verified); }
+                using (var startup = Process.Start(new ProcessStartInfo { FileName = exe, Arguments = "--configure-startup", WorkingDirectory = destination, UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true }))
+                {
+                    if (!startup.WaitForExit(15000)) { startup.Kill(); throw new IOException("Startup configuration timed out. Retry setup."); }
+                    if (startup.ExitCode != 0) throw new IOException("Could not configure Windows startup: " + startup.StandardError.ReadToEnd());
+                }
                 cancellation.Token.ThrowIfCancellationRequested(); status.Text = "4/4 - Finishing installation...";
                 string uninstaller = Path.Combine(destination, "Uninstall.exe");
                 if (!String.Equals(Assembly.GetExecutingAssembly().Location, uninstaller, StringComparison.OrdinalIgnoreCase)) File.WriteAllBytes(uninstaller, Resource("Uninstaller"));
@@ -132,6 +136,7 @@ namespace NotewllSetup
                     key.SetValue("DisplayIcon", exe); key.SetValue("UninstallString", "\"" + uninstaller + "\" --uninstall"); key.SetValue("NoModify", 1); key.SetValue("NoRepair", 1);
                     key.SetValue("EstimatedSize", InstalledKilobytes(destination), RegistryValueKind.DWord);
                 }
+                Process.Start(new ProcessStartInfo { FileName = exe, Arguments = "--background", WorkingDirectory = destination, UseShellExecute = true });
                 ShowSuccess();
             }
             catch (Exception ex) { status.Text = cancellation.IsCancellationRequested ? "Installation canceled. Your saved notes are kept. Click Retry to continue." : "Setup could not finish: " + ex.Message + "\nYour saved notes are kept. Click Retry to continue."; action.Text = "Retry"; }
@@ -142,10 +147,10 @@ namespace NotewllSetup
             finished = true;
             Text = "Notewll - Installed";
             heading.Text = "You're all set";
-            description.Text = "Notewll installed successfully.\nYour English speech model is ready. Open the app to start writing and taking notes.";
+            description.Text = "Notewll is running in the background.\nUse the floating ball on your screen to start writing.\nYou can change Windows startup in Preferences.";
             progress.Style = ProgressBarStyle.Continuous; desktop.Visible = progress.Visible = false;
             status.Text = "No further downloads are needed for speech recognition.\nYou can use the app offline.";
-            action.Text = "Open app";
+            action.Text = "Done";
             close.Visible = true; close.Text = "Close";
         }
         static int InstalledKilobytes(string directory)

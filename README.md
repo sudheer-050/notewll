@@ -4,7 +4,7 @@
 
 Speak into your apps, record a thought, and return to saved conversations. Speech processing and notes stay on your computer.
 
-[**Download Windows preview 0.11.0**](https://github.com/sudheer-050/notewll/releases/download/v0.11.0/Notewll-Setup-0.11.0.exe) ? [Product and demo](https://notewll.myhai.org/) ? [Portfolio case study](https://sudheerkumargandiboyana.com/projects/notewll/) ? [User guide](USER_GUIDE.md)
+[**Download Windows preview 0.11.1**](https://github.com/sudheer-050/notewll/releases/download/v0.11.1/Notewll-Setup-0.11.1.exe) ? [Product and demo](https://notewll.myhai.org/) ? [Portfolio case study](https://sudheerkumargandiboyana.com/projects/notewll/) ? [User guide](USER_GUIDE.md)
 
 **Windows 10/11 x64 ? .NET Framework 4.8 ? unsigned preview.** The installer includes standard offline English speech; no account, Python or Docker is needed for that path. Optional local models require separate setup.
 
@@ -40,9 +40,9 @@ Notes save atomically and have recovery copies. Optional encrypted snapshots dep
 
 ## Install or update
 
-1. Download [Notewll-Setup-0.11.0.exe](https://github.com/sudheer-050/notewll/releases/download/v0.11.0/Notewll-Setup-0.11.0.exe) and [checksums](https://github.com/sudheer-050/notewll/releases/download/v0.11.0/SHA256SUMS-0.11.0.txt).
+1. Download [Notewll-Setup-0.11.1.exe](https://github.com/sudheer-050/notewll/releases/download/v0.11.1/Notewll-Setup-0.11.1.exe) and [checksums](https://github.com/sudheer-050/notewll/releases/download/v0.11.1/SHA256SUMS-0.11.1.txt).
 2. Finish recordings, close Notewll and run the installer. Existing notes and preferences are preserved.
-3. Open Try Notewll and test your microphone; then test dictation in your chosen editor.
+3. The floating ball appears automatically after installation and at Windows sign-in. The dashboard stays closed. Open Notewll from the tray to test your microphone in Try Notewll. Turn Windows startup off in Preferences if desired.
 4. Set writing behavior on Style. Additional speech languages require Optional features > Set up multilingual speech.
 
 The multilingual Whisper base model is about 145 MB; its Python environment and packages need additional disk/RAM. Models download only during optional setup. The Windows preview is unsigned and does not enable signing-based automatic installation.

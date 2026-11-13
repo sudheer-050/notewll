@@ -1,4 +1,4 @@
-param([string]$Version = '0.11.0.0')
+param([string]$Version = '0.11.1.0')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $identity = Get-Content -LiteralPath "$root\store\identity.json" -Raw | ConvertFrom-Json

@@ -2,7 +2,7 @@
 
 ## Install and start
 
-Run `dist/Notewll-Setup.exe` and click Install. This single file includes the application and standard English speech model/runtime; installation and standard speech work offline. No Python or command-line setup is needed. Exit the old app if requested. Setup reports successful installation separately and offers Open app. Start opens the hub; closing it leaves the app running. Exit in the Windows system tray quits it.
+Run `dist/Notewll-Setup.exe` and click Install. This single file includes the application and standard English speech model/runtime; installation and standard speech work offline. No Python or command-line setup is needed. Exit the old app if requested. Setup starts Notewll in the background and shows its floating ball automatically. New installations also start this way when you sign in to Windows. Use Preferences to turn Windows startup off. Existing startup and ball preferences are preserved during updates. Open Notewll from the tray when you want the dashboard; closing it leaves the app running. Exit in the Windows system tray quits it.
 
 Home offers Dictate, New note, Record meeting and recent work. Dictate opens a large editor inside Notewll, shows a live draft while you speak, and finishes the text when you press Stop & review. Repeat recording to append; Copy text exports the result. The dictation shortcut and floating toolbar still write into other apps. First-run guidance includes permission and microphone checks. Preferences > Recording has microphone testing, Check speech engine and setup repair.
 

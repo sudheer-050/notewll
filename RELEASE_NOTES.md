@@ -1,4 +1,12 @@
-﻿# Notewll 0.11.0 - a simpler Windows workspace
+﻿# Notewll 0.11.1 - floating ball at startup
+
+- Fresh installations start with Windows by default and show the floating ball without opening the dashboard.
+- Setup launches the app automatically after installation. Existing startup and ball preferences are preserved.
+- A repeated background launch keeps the dashboard closed. Windows startup can be turned off in Preferences.
+
+This patch changes startup behavior. Speech recognition behavior is unchanged.
+
+## Notewll 0.11.0 - a simpler Windows workspace
 
 Unsigned Windows x64 preview. Standard offline English speech is included in the installer.
 
@@ -13,7 +21,7 @@ Unsigned Windows x64 preview. Standard offline English speech is included in the
 
 ## Downloads
 
-- Notewll-Setup-0.11.0.exe: full Windows x64 installer. Existing notes and preferences are preserved.
+- Notewll-Setup-0.11.1.exe: full Windows x64 installer. Existing notes and preferences are preserved.
 - Notewll-Setup.exe: the same installer with a convenient filename.
 - SHA256SUMS-0.11.0.txt: SHA-256 checksums.
 

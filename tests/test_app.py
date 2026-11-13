@@ -124,7 +124,7 @@ def write_config(tmp_path, **values):
 
 def test_config_defaults_are_private_and_opt_in(tmp_path):
     result = run("--validate-config", write_config(tmp_path, Hotkey="F10"))
-    assert result.stdout == "F10|system-default|True|True|False"  # startup defaults to off
+    assert result.stdout == "F10|system-default|True|True|True"  # fresh installs start with Windows
 
 
 def test_config_loads_v010_file(tmp_path):
@@ -134,7 +134,7 @@ def test_config_loads_v010_file(tmp_path):
 
 def test_config_accepts_named_microphone(tmp_path):
     result = run("--validate-config", write_config(tmp_path, Microphone="Microphone (Realtek(R) Audio)", CleanupEnabled=False, AutoPaste=False))
-    assert result.stdout.endswith("|False|False|False")
+    assert result.stdout.endswith("|False|False|True")
 
 
 def test_config_rejects_invalid_hotkey(tmp_path):
@@ -158,11 +158,11 @@ def test_stt_down_is_reported_not_raised():
     assert result.returncode == 4 and result.stdout.startswith("down|")
 
 
-def test_settings_window_builds_with_devices_cleanup_preview_and_startup_off():
+def test_settings_window_builds_with_devices_cleanup_preview_and_startup_enabled():
     result = run("--settings-smoke")
     assert result.returncode == 0, result.stderr
     assert result.stdout.startswith("settings-ok|mics=Windows default microphone")
-    assert "|startup=False|" in result.stdout and result.stdout.endswith("preview=Hello hello there.")
+    assert "|startup=True|" in result.stdout and result.stdout.endswith("preview=Hello hello there.")
 
 
 def test_desktop_hub_navigation_preferences_preview_and_close_to_tray():

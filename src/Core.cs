@@ -9,8 +9,8 @@ using System.Web.Script.Serialization;
 [assembly: System.Reflection.AssemblyTitle("Notewll")]
 [assembly: System.Reflection.AssemblyProduct("Notewll")]
 #if !STORE_BUILD
-[assembly: System.Reflection.AssemblyVersion("0.11.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("0.11.0.0")]
+[assembly: System.Reflection.AssemblyVersion("0.11.1.0")]
+[assembly: System.Reflection.AssemblyFileVersion("0.11.1.0")]
 #endif
 
 namespace Notewll
@@ -110,7 +110,7 @@ namespace Notewll
             NotesSort = "Newest"; ExportFormat = "PDF"; WritingStyle = "Standard";
             UpdateManifestUrl = UpdatePublisherThumbprint = ""; Theme = "System"; ShowToolbar = true; ShowVoiceIndicator = false; ReduceNoise = true; ReducedMotion = false; NoteMicrophoneId = NoteOutputId = ""; Personalization = new List<PersonalRule>();
             SmartCleanupEnabled = false;
-            Hotkey = "F8"; NotesHotkey = "Ctrl+Shift+N"; MeetingHotkey = "Ctrl+Shift+M"; NotesSource = "Microphone"; MeetingSource = "Both"; ToolbarX = ToolbarY = Int32.MinValue; Microphone = DefaultMic; CleanupEnabled = true; AutoPaste = true; LiveWriting = true; PasteMethod = "Auto"; StartWithWindows = false; AutoStartStt = true;
+            Hotkey = "F8"; NotesHotkey = "Ctrl+Shift+N"; MeetingHotkey = "Ctrl+Shift+M"; NotesSource = "Microphone"; MeetingSource = "Both"; ToolbarX = ToolbarY = Int32.MinValue; Microphone = DefaultMic; CleanupEnabled = true; AutoPaste = true; LiveWriting = true; PasteMethod = "Auto"; StartWithWindows = true; AutoStartStt = true;
             SttUrl = "http://127.0.0.1:5000";
             SttLauncher = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @"Documents\projects\ollama-personal-model\holly_server.py");
             SttPythonw = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Programs\Python\Python310\pythonw.exe");

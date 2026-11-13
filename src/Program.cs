@@ -19,7 +19,7 @@ namespace Notewll
             {
                 if (!created)
                 {
-                    try { using (var signal = EventWaitHandle.OpenExisting("LocalDictation.ShowHub")) signal.Set(); }
+                    try { if (!background) using (var signal = EventWaitHandle.OpenExisting("LocalDictation.ShowHub")) signal.Set(); }
                     catch (WaitHandleCannotBeOpenedException) { }
                     return 0;
                 }
@@ -37,6 +37,17 @@ namespace Notewll
             {
                 switch (args[0])
                 {
+                    case "--configure-startup":
+                        {
+                            bool dryRun = args.Length == 3 && args[1] == "--dry-run";
+                            var startupPreferences = Config.Load(dryRun ? args[2] : null);
+                            if (!dryRun)
+                            {
+                                Startup.Set(startupPreferences.StartWithWindows);
+                                if (!System.IO.File.Exists(Config.FilePath)) startupPreferences.Save();
+                            }
+                            Console.Write("startup=" + startupPreferences.StartWithWindows + "|ball=" + startupPreferences.ShowToolbar + "|launch=--background"); return 0;
+                        }
                     case "--ui-audit": UiAudit.Run(args[1]); return 0;
                     case "--backend-smoke": BackendVerification.Run(args[1], args[2], args[3]); return 0;
                     case "--themes-smoke": ThemeVerification.Run(args[1], false); return 0;

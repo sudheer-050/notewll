@@ -5,7 +5,7 @@ from pathlib import Path
 
 from test_app import ROOT
 
-SETUP = ROOT / "dist" / "Notewll-Setup-0.11.0.exe"
+SETUP = ROOT / "dist" / "Notewll-Setup-0.11.1.exe"
 
 
 def test_setup_reports_installed_size_in_rounded_up_kilobytes(tmp_path):

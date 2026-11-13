@@ -1,7 +1,7 @@
 ﻿param([string]$Repository = 'sudheer-050/notewll', [switch]$PrepareOnly, [string]$AccuracyReferences = '', [string]$AccuracyHypotheses = '')
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$version = '0.11.0'
+$version = '0.11.1'
 $stage = Join-Path $projectRoot "release\notewll-$version"
 $installer = Join-Path $projectRoot "dist\Notewll-Setup.exe"
 $releaseNotes = Join-Path $projectRoot "dist\RELEASE_NOTES-$version.md"
@@ -14,7 +14,7 @@ if (-not $PrepareOnly) {
 if (-not (Test-Path -LiteralPath $installer)) { throw 'Build and verify the installer first.' }
 New-Item -ItemType Directory -Path $stage -Force | Out-Null
 # Explicit source allowlist excludes recordings, local configuration, caches and generated test data.
-foreach ($folder in @('src','assets','installer','scripts','engine','verification','.github')) {
+foreach ($folder in @('src','assets','installer','scripts','engine','.github')) {
     $target = Join-Path $stage $folder
     New-Item -ItemType Directory -Path $target -Force | Out-Null
     Get-ChildItem -LiteralPath (Join-Path $projectRoot $folder) -File -Recurse | Where-Object { $_.FullName -notmatch '[\\/]__pycache__[\\/]' } | ForEach-Object {
@@ -24,9 +24,11 @@ foreach ($folder in @('src','assets','installer','scripts','engine','verificatio
         Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
     }
 }
+$verification = Join-Path $stage 'verification'; New-Item -ItemType Directory -Path $verification -Force | Out-Null
+Get-ChildItem -LiteralPath (Join-Path $projectRoot 'verification') -File -Filter 'RELEASE_*.md' | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $verification -Force }
 foreach ($file in @('.gitignore','README.md','USER_GUIDE.md','BACKLOG_STATUS.md','FIX_REPORT_0.7.0.md','UX_USER_REVIEW_0.6.1.md','RELEASE_NOTES.md','THIRD_PARTY_NOTICES.md','requirements-dev.txt','SPEECH_QUALITY_UPDATE.md','Install quiet dictation.cmd','Update Notewll accuracy.cmd','setup.ps1','Update Notewll.vbs')) { Copy-Item -LiteralPath (Join-Path $projectRoot $file) -Destination (Join-Path $stage $file) -Force }
 $tests = Join-Path $stage 'tests'; New-Item -ItemType Directory -Path $tests -Force | Out-Null
-foreach ($file in @('test_app.py','test_setup.py','test_note_exports.py','test_release.py','test_completion.py','test_live_grammar.py','test_speech_quality.py','test_ux_fixes.py','test_accurate_speech.py','test_accuracy_scoring.py')) { Copy-Item -LiteralPath (Join-Path $projectRoot "tests\$file") -Destination (Join-Path $tests $file) -Force }
+Get-ChildItem -LiteralPath (Join-Path $projectRoot 'tests') -File -Filter 'test_*.py' | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $tests -Force }
 & "$PSScriptRoot\prepare_release.ps1" -Repository $Repository
 if ($PrepareOnly) { Write-Output "Source snapshot prepared: $stage"; return }
 function Invoke-Native([scriptblock]$Command) {
