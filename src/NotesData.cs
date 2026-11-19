@@ -13,7 +13,17 @@ namespace Notewll
         [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode, SetLastError = true)]
         static extern bool MoveFileEx(string source, string destination, int flags);
         internal static void CommitFile(string source, string destination)
-        { if (!MoveFileEx(source, destination, 1 | 8)) throw new IOException("Could not commit the saved file: " + new System.ComponentModel.Win32Exception(System.Runtime.InteropServices.Marshal.GetLastWin32Error()).Message); }
+        {
+            // Antivirus, search indexing, sync tools or a reader can hold the destination briefly; retry those transient errors.
+            for (int attempt = 0; ; attempt++)
+            {
+                if (MoveFileEx(source, destination, 1 | 8)) return;
+                int error = System.Runtime.InteropServices.Marshal.GetLastWin32Error();
+                bool transient = error == 5 || error == 32 || error == 33; // access denied, sharing violation, lock violation
+                if (!transient || attempt >= 12) throw new IOException("Could not commit the saved file: " + new System.ComponentModel.Win32Exception(error).Message);
+                System.Threading.Thread.Sleep(25 * (attempt + 1));
+            }
+        }
         public static void WriteRules(string path, List<PersonalRule> rules)
         {
             var copy = rules.Select(r => r.Copy()).ToList(); PersonalRule.Validate(copy);

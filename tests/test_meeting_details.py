@@ -35,3 +35,9 @@ def test_invite_without_people_still_imports(tmp_path):
 def test_meeting_detector_reports_without_crashing():
     out = subprocess.run([str(APP), "--meeting-detect"], capture_output=True, text=True, timeout=60)
     assert out.returncode == 0 and "meeting:" in out.stdout
+
+
+def test_dictation_makes_the_recording_microphone_private_with_a_short_tail():
+    out = subprocess.run([str(APP), "--private-mic-check"], capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stdout
+    assert out.stdout == "before=False during=True tail=True after=False"

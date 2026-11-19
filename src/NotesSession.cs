@@ -10,6 +10,13 @@ namespace Notewll
 {
     sealed class NotesSession : IDisposable
     {
+        // Shortcut dictation is private: while it runs (plus a short tail for capture latency) the recording's
+        // microphone track receives silence, so prompts never reach a meeting's audio or transcript.
+        static long microphonePrivateUntil;
+        public static void BeginPrivateMicrophone() { Interlocked.Exchange(ref microphonePrivateUntil, long.MaxValue); }
+        public static void EndPrivateMicrophone() { Interlocked.Exchange(ref microphonePrivateUntil, Stopwatch.GetTimestamp() + Stopwatch.Frequency / 2); }
+        public static bool MicrophonePrivate { get { return Stopwatch.GetTimestamp() < Interlocked.Read(ref microphonePrivateUntil); } }
+        static byte[] Private(string source, byte[] pcm) { return source == "Microphone" && MicrophonePrivate ? new byte[pcm.Length] : pcm; }
         readonly NoteStore store;
         readonly Config config;
         readonly Func<byte[], string> transcribe;
@@ -105,6 +112,7 @@ namespace Notewll
                         string current = source;
                         captures[source].Drain((frame, pcm) =>
                         {
+                            pcm = Private(current, pcm);
                             if (!paused) tracks[current].WriteAt(frame + resumeFrame, pcm);
                             int peak = 0; double squares = 0; for (int i = 0; i + 1 < pcm.Length; i += 2) { int value = BitConverter.ToInt16(pcm, i); peak = Math.Max(peak, Math.Abs(value)); squares += (double)value * value; }
                             int rms = (int)Math.Sqrt(squares / Math.Max(1, pcm.Length / 2));
@@ -135,7 +143,7 @@ namespace Notewll
                 capturing = false;
                 foreach (var source in captures.Keys)
                 {
-                    try { captures[source].Drain((frame, pcm) => { if (tracks.ContainsKey(source) && !paused) tracks[source].WriteAt(frame + resumeFrame, pcm); }); } catch { }
+                    try { captures[source].Drain((frame, pcm) => { if (tracks.ContainsKey(source) && !paused) tracks[source].WriteAt(frame + resumeFrame, Private(source, pcm)); }); } catch { }
                     captures[source].Dispose();
                 }
                 foreach (var source in tracks.Keys)

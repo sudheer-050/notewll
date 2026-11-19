@@ -323,6 +323,7 @@ namespace Notewll
             menu.Items.Add("Stop and save note", null, (s, e) => { if (hub != null && hub.IsNoteRecording) hub.ToggleNote(hub.NoteMode); });
             menu.Items.Add("Exit", null, (s, e) => ExitThread());
             tray = new NotifyIcon { Icon = AppLogo.Icon, Text = "Notewll " + StoreDistribution.DisplayVersion + " - hold " + config.Hotkey, Visible = true, ContextMenuStrip = menu };
+            state.Changed = (from, to) => { if (to == AppState.Recording) NotesSession.BeginPrivateMicrophone(); else if (from == AppState.Recording) NotesSession.EndPrivateMicrophone(); };
             tray.BalloonTipClicked += (s, e) => StopAutoMeetingFromNotice();
             tray.BalloonTipClosed += (s, e) => meetingNoticeShown = false;
             meetingWatch.Tick += (s, e) => WatchForMeetings(); meetingWatch.Start();

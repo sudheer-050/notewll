@@ -9,8 +9,8 @@ using System.Web.Script.Serialization;
 [assembly: System.Reflection.AssemblyTitle("Notewll")]
 [assembly: System.Reflection.AssemblyProduct("Notewll")]
 #if !STORE_BUILD
-[assembly: System.Reflection.AssemblyVersion("0.12.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("0.12.0.0")]
+[assembly: System.Reflection.AssemblyVersion("0.12.1.0")]
+[assembly: System.Reflection.AssemblyFileVersion("0.12.1.0")]
 #endif
 
 namespace Notewll
@@ -28,8 +28,10 @@ namespace Notewll
                 || (Current == AppState.Processing && (next == AppState.Idle || next == AppState.Error))
                 || (Current == AppState.Error && next == AppState.Idle);
             if (!ok) throw new InvalidOperationException("Invalid state transition: " + Current + " -> " + next);
-            Current = next;
+            var previous = Current; Current = next;
+            if (Changed != null) Changed(previous, next);
         }
+        public Action<AppState, AppState> Changed;
     }
 
     sealed class Config

@@ -1,4 +1,9 @@
-﻿# Notewll 0.12.0 - meetings record themselves
+﻿# Notewll 0.12.1 - your dictation stays out of meeting transcripts
+
+- While you dictate during a meeting recording (shortcut, floating ball or action menu), the meeting's microphone track records silence, plus half a second after you release. Your prompts never reach the meeting audio or transcript; computer audio keeps recording.
+- Saving a note retries briefly when antivirus, search indexing or another program has the file open, instead of reporting "Access is denied".
+
+## Notewll 0.12.0 - meetings record themselves
 
 - Optional automatic meeting recording (Preferences > Notes): when Teams, Google Meet, Zoom, Webex or a Slack huddle opens the microphone, Notewll starts recording the meeting and stops 30 seconds after the call ends. A short notice ("Zoom meeting - Recording started") appears; click it to stop. Off by default.
 - Each meeting keeps its details: app, meeting name (from the call window), Google Meet code and link, call start, end and length, speakers heard, and - when the meeting is in an imported calendar file - the organizer and invited people.

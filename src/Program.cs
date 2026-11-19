@@ -50,6 +50,13 @@ namespace Notewll
                         }
                     case "--ui-audit": UiAudit.Run(args[1]); return 0;
                     case "--meeting-detect": Console.Write(MeetingDetector.Describe()); return 0;
+                    case "--private-mic-check":
+                        {
+                            Func<bool> muted = () => NotesSession.MicrophonePrivate;
+                            bool before = muted(); NotesSession.BeginPrivateMicrophone(); bool during = muted();
+                            NotesSession.EndPrivateMicrophone(); bool tail = muted(); System.Threading.Thread.Sleep(700); bool after = muted();
+                            Console.Write("before=" + before + " during=" + during + " tail=" + tail + " after=" + after); return before || !during || !tail || after ? 1 : 0;
+                        }
                     case "--calendar-parse": Console.Write(new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(MeetingCalendar.Parse(System.IO.File.ReadAllText(args[1])))); return 0;
                     case "--backend-smoke": BackendVerification.Run(args[1], args[2], args[3]); return 0;
                     case "--themes-smoke": ThemeVerification.Run(args[1], false); return 0;
@@ -301,6 +308,25 @@ namespace Notewll
                                 int peak = 0; for (int i = 0; i + 1 < pcm.Length; i += 2) peak = Math.Max(peak, Math.Abs((int)BitConverter.ToInt16(pcm, i)));
                                 if (session.Busy || peak < 500 || !String.IsNullOrEmpty(session.Document.CaptureError)) throw new Exception("Loopback did not capture the test tone: " + peak);
                                 Console.Write("loopback-ok|peak=" + peak); return 0;
+                            }
+                        }
+                    case "--private-mic-probe":
+                        {
+                            // Real microphone recording; dictation "runs" from 2 s to 4 s. Reports exact-silence runs on the microphone track.
+                            var store = new NoteStore(args[1]);
+                            using (var session = new NotesSession(store, new Config(), wav => ""))
+                            {
+                                session.Start("Private microphone probe", "Microphone", "", "", "", "Meeting");
+                                Thread.Sleep(2000); NotesSession.BeginPrivateMicrophone(); Thread.Sleep(2000); NotesSession.EndPrivateMicrophone(); Thread.Sleep(2500); session.Stop();
+                                var until = DateTime.UtcNow.AddSeconds(15); while (session.Busy && DateTime.UtcNow < until) Thread.Sleep(50);
+                                byte[] pcm = WaveTrack.ReadPcm(store.AudioPath(session.Document, "Microphone"), 0, 16000 * 10);
+                                var runs = new System.Collections.Generic.List<string>(); int start = -1, nonzero = 0, samples = pcm.Length / 2;
+                                for (int i = 0; i <= samples; i++)
+                                {
+                                    bool zero = i < samples && BitConverter.ToInt16(pcm, i * 2) == 0; if (i < samples && !zero) nonzero++;
+                                    if (zero && start < 0) start = i; else if (!zero && start >= 0) { if (i - start >= 1600) runs.Add((start / 16000.0).ToString("0.00") + "s+" + ((i - start) / 16000.0).ToString("0.00") + "s"); start = -1; }
+                                }
+                                Console.Write("length=" + (samples / 16000.0).ToString("0.0") + "s nonzero=" + (100 * nonzero / Math.Max(1, samples)) + "% silent-runs=" + String.Join(",", runs)); return 0;
                             }
                         }
                     case "--notes-layout":
