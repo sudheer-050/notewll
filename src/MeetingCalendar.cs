@@ -16,19 +16,42 @@ namespace Notewll
         public string StartUtc { get; set; }
         public string Url { get; set; }
         public bool Cancelled { get; set; }
+        public string Organizer { get; set; }
+        public List<string> Attendees { get; set; }
+        public string Location { get; set; }
+        public PlannedMeeting() { Attendees = new List<string>(); }
     }
     static class MeetingCalendar
     {
         static string FilePath { get { return Path.Combine(Config.DirectoryPath, "calendar.json"); } }
         public static DateTime Start(PlannedMeeting m) { return DateTime.Parse(m.StartUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).ToUniversalTime(); }
+        // "ORGANIZER;CN=Priya Shah:mailto:priya@x.com" -> "Priya Shah <priya@x.com>".
+        static string Person(string[] field)
+        {
+            var cn = Regex.Match(field[0], "CN=\"?([^;\":]+)\"?", RegexOptions.IgnoreCase);
+            string mail = Regex.Replace(field[1], "^mailto:", "", RegexOptions.IgnoreCase).Trim();
+            string name = cn.Success ? cn.Groups[1].Value.Trim() : "";
+            string result = name.Length > 0 && mail.Length > 0 && !name.Equals(mail, StringComparison.OrdinalIgnoreCase) ? name + " <" + mail + ">" : name.Length > 0 ? name : mail;
+            return result.Length == 0 || result.Length > 300 ? null : result;
+        }
+        // The imported invite that best fits a call starting now: same Meet code or link first, then the nearest start time.
+        public static PlannedMeeting Match(DateTime callStartUtc, string code, string app)
+        {
+            List<PlannedMeeting> all; try { all = Load(); } catch { return null; }
+            var near = all.Where(m => !m.Cancelled && Math.Abs((Start(m) - callStartUtc).TotalMinutes) <= 45).ToList();
+            if (code != null) { var byCode = near.Concat(all).FirstOrDefault(m => (m.Url ?? "").IndexOf(code, StringComparison.OrdinalIgnoreCase) >= 0 || (m.Location ?? "").IndexOf(code, StringComparison.OrdinalIgnoreCase) >= 0); if (byCode != null && Math.Abs((Start(byCode) - callStartUtc).TotalHours) <= 12) return byCode; }
+            string host = app == "Google Meet" ? "meet.google.com" : app == "Zoom" ? "zoom.us" : app == "Teams" ? "teams." : app == "Webex" ? "webex.com" : null;
+            return near.OrderByDescending(m => host != null && ((m.Url ?? "") + (m.Location ?? "")).IndexOf(host, StringComparison.OrdinalIgnoreCase) >= 0)
+                       .ThenBy(m => Math.Abs((Start(m) - callStartUtc).TotalMinutes)).FirstOrDefault();
+        }
         static string Unescape(string value) { return Regex.Replace(value, @"\\([nN,;\\])", m => m.Groups[1].Value.Equals("n", StringComparison.OrdinalIgnoreCase) ? "\n" : m.Groups[1].Value); }
         public static List<PlannedMeeting> Parse(string content)
         {
             if (content.Length > 2 * 1024 * 1024 || !content.Contains("BEGIN:VCALENDAR")) throw new InvalidDataException("Choose an iCalendar file up to 2 MB.");
-            var result = new List<PlannedMeeting>(); Dictionary<string, string[]> item = null; int nested = 0;
+            var result = new List<PlannedMeeting>(); Dictionary<string, string[]> item = null; int nested = 0; var attendees = new List<string>();
             foreach (var raw in Regex.Replace(content, @"\r?\n[ \t]", "").Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
-                if (raw.Equals("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase)) { if (item != null) throw new InvalidDataException("Nested calendar event."); item = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase); continue; }
+                if (raw.Equals("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase)) { if (item != null) throw new InvalidDataException("Nested calendar event."); item = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase); attendees = new List<string>(); continue; }
                 if (item == null) continue;
                 if (raw.StartsWith("BEGIN:", StringComparison.OrdinalIgnoreCase)) { nested++; continue; }
                 if (raw.StartsWith("END:", StringComparison.OrdinalIgnoreCase) && nested > 0) { nested--; continue; }
@@ -55,13 +78,17 @@ namespace Notewll
                     }
                     string url = item.ContainsKey("URL") ? item["URL"][1] : ""; Uri link;
                     if (url.Length > 0 && (!Uri.TryCreate(url, UriKind.Absolute, out link) || (link.Scheme != "https" && link.Scheme != "http"))) throw new InvalidDataException("Meeting links must use http or https.");
-                    var meeting = new PlannedMeeting { Id = item["UID"][1], Title = Unescape(item.ContainsKey("SUMMARY") ? item["SUMMARY"][1] : "Meeting"), StartUtc = start.ToString("o"), Url = url, Cancelled = item.ContainsKey("STATUS") && item["STATUS"][1].Equals("CANCELLED", StringComparison.OrdinalIgnoreCase) };
+                    string location = item.ContainsKey("LOCATION") ? Unescape(item["LOCATION"][1]) : "";
+                    if (url.Length == 0) { var found = Regex.Match(location + " " + (item.ContainsKey("DESCRIPTION") ? Unescape(item["DESCRIPTION"][1]) : ""), @"https://(?:meet\.google\.com|[\w.-]*zoom\.us|teams\.microsoft\.com|teams\.live\.com|[\w.-]*webex\.com)/[^\s<>""]+", RegexOptions.IgnoreCase); if (found.Success && found.Value.Length <= 2000) url = found.Value; }
+                    var meeting = new PlannedMeeting { Id = item["UID"][1], Title = Unescape(item.ContainsKey("SUMMARY") ? item["SUMMARY"][1] : "Meeting"), StartUtc = start.ToString("o"), Url = url, Cancelled = item.ContainsKey("STATUS") && item["STATUS"][1].Equals("CANCELLED", StringComparison.OrdinalIgnoreCase),
+                        Organizer = item.ContainsKey("ORGANIZER") ? Person(item["ORGANIZER"]) : null, Attendees = attendees.Distinct(StringComparer.OrdinalIgnoreCase).Take(200).ToList(), Location = location.Length > 500 ? location.Substring(0, 500) : location };
                     if (meeting.Id.Length > 500 || meeting.Title.Length > 500 || url.Length > 2000) throw new InvalidDataException("Calendar fields are too long.");
                     result.Add(meeting); if (result.Count > 200) throw new InvalidDataException("Import at most 200 individual meetings."); item = null; continue;
                 }
                 if (nested > 0) continue;
                 int colon = raw.IndexOf(':'); if (colon < 1) throw new InvalidDataException("Invalid calendar property.");
                 string header = raw.Substring(0, colon), key = header.Split(';')[0];
+                if (key.Equals("ATTENDEE", StringComparison.OrdinalIgnoreCase)) { string person = Person(new[] { header, raw.Substring(colon + 1) }); if (person != null) attendees.Add(person); continue; }
                 if (item.ContainsKey(key) && new[] { "UID", "DTSTART", "SUMMARY", "URL" }.Contains(key.ToUpperInvariant())) throw new InvalidDataException("Duplicate calendar field.");
                 item[key] = new[] { header, raw.Substring(colon + 1) };
             }
@@ -91,10 +118,13 @@ namespace Notewll
     sealed partial class SettingsForm
     {
         readonly CheckBox meetingReminders = new ThemedCheckBox { Text = "Remind me about imported meetings while Notewll runs", AutoSize = true };
+        readonly CheckBox autoRecordMeetings = new ThemedCheckBox { Text = "Record meetings automatically (Teams, Meet, Zoom, Webex, Slack)", AutoSize = true };
         void BuildCalendarControls(Panel page)
         {
             meetingReminders.Checked = source.MeetingReminders; meetingReminders.CheckedChanged += (s, e) => MarkDirty(); Setting(page, meetingReminders, 490);
-            Button(page, "Calendar & upcoming meetings", 20, 538, 330, (s, e) => ShowMeetingCalendar());
+            autoRecordMeetings.Checked = source.AutoRecordMeetings; autoRecordMeetings.CheckedChanged += (s, e) => MarkDirty(); Setting(page, autoRecordMeetings, 530);
+            Label(page, "Starts when a call app opens your microphone and stops 30 seconds after the call ends. A notice appears each time; click it to stop. Get permission from the people you record.", 20, 570, 620, 50, 9, false, Muted);
+            Button(page, "Calendar & upcoming meetings", 20, 630, 330, (s, e) => ShowMeetingCalendar());
         }
         void ShowMeetingCalendar()
         {

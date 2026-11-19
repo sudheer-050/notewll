@@ -9,8 +9,8 @@ using System.Web.Script.Serialization;
 [assembly: System.Reflection.AssemblyTitle("Notewll")]
 [assembly: System.Reflection.AssemblyProduct("Notewll")]
 #if !STORE_BUILD
-[assembly: System.Reflection.AssemblyVersion("0.11.2.0")]
-[assembly: System.Reflection.AssemblyFileVersion("0.11.2.0")]
+[assembly: System.Reflection.AssemblyVersion("0.12.0.0")]
+[assembly: System.Reflection.AssemblyFileVersion("0.12.0.0")]
 #endif
 
 namespace Notewll
@@ -50,6 +50,8 @@ namespace Notewll
         public string SpeechLanguage { get; set; }
         public bool RichSnippetPaste { get; set; }
         public bool MeetingReminders { get; set; }
+        // Start a meeting recording when a call app (Teams, Meet, Zoom, Webex, Slack) opens the microphone; stop when the call ends.
+        public bool AutoRecordMeetings { get; set; }
         public int DictionarySort { get; set; }
         public int SnippetSort { get; set; }
         public bool AppStylesEnabled { get; set; }

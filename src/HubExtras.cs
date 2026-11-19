@@ -69,7 +69,7 @@ namespace Notewll
             mic.SelectedIndex = Math.Max(0, mic.Items.IndexOf(source.Microphone)); pasteMethod.SelectedIndex = Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, source.PasteMethod);
             updateUrl.Text = source.UpdateManifestUrl; updatePublisher.Text = source.UpdatePublisherThumbprint;
             updateOnStart.Checked = source.CheckUpdatesOnStart;
-            speechLanguage.SelectedIndex = Array.IndexOf(SpeechLanguages.Codes, source.SpeechLanguage); appStyles.Checked = source.AppStylesEnabled; appStyleDraft = source.AppWritingStyles; richSnippetPaste.Checked = source.RichSnippetPaste; meetingReminders.Checked = source.MeetingReminders;
+            speechLanguage.SelectedIndex = Array.IndexOf(SpeechLanguages.Codes, source.SpeechLanguage); appStyles.Checked = source.AppStylesEnabled; appStyleDraft = source.AppWritingStyles; richSnippetPaste.Checked = source.RichSnippetPaste; meetingReminders.Checked = source.MeetingReminders; autoRecordMeetings.Checked = source.AutoRecordMeetings;
             LoadBallChoices(source);
             pendingRules = source.Copy().Personalization; dirty = false; savePinned.Text = "Save preferences"; return true;
         }

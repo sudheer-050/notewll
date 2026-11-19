@@ -30,11 +30,12 @@ namespace Notewll
                 add("Written in", "Notewll / " + (kind == "Note" ? "Personal notes" : "Meetings"));
                 if (entry.Segments.Count > 0) add("Audio source", entry.Mode == "Both" ? "Microphone and computer audio" : entry.Mode == "Computer" ? "Computer audio" : "Microphone / in-person audio");
                 if (entry.DurationSeconds > 0) add("Capture length", VoiceKpis.Duration(entry.DurationSeconds / 60));
+                foreach (var row in MeetingInfo.Rows(entry)) add(row.Key, row.Value);
             }
             var audio = new[] { "Microphone", "Computer" }.Where(source => File.Exists(store.AudioPath(entry, source))).ToArray();
             add("Saved recording", audio.Length == 0 ? "No saved audio" : String.Join(" and ", audio));
             if (!String.IsNullOrWhiteSpace(entry.UserName)) add("Your name", entry.UserName);
-            if (entry.Participants.Count > 0) add("Participants", String.Join(", ", entry.Participants));
+            if (entry.Participants.Count > 0 && entry.Meeting == null) add("Participants", String.Join(", ", entry.Participants));
             if (!String.IsNullOrWhiteSpace(entry.Tags)) add("Tags", entry.Tags);
             add("Status", String.IsNullOrWhiteSpace(entry.Status) ? "Saved" : entry.Status);
             add("Storage", "Saved locally on this device"); return rows;

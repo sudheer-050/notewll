@@ -1,4 +1,12 @@
-﻿# Notewll 0.11.2 - meetings transcribe without the enhanced model
+﻿# Notewll 0.12.0 - meetings record themselves
+
+- Optional automatic meeting recording (Preferences > Notes): when Teams, Google Meet, Zoom, Webex or a Slack huddle opens the microphone, Notewll starts recording the meeting and stops 30 seconds after the call ends. A short notice ("Zoom meeting - Recording started") appears; click it to stop. Off by default.
+- Each meeting keeps its details: app, meeting name (from the call window), Google Meet code and link, call start, end and length, speakers heard, and - when the meeting is in an imported calendar file - the organizer and invited people.
+- Finished meetings are also saved as plain text files in Documents\Notewll Meetings, ready to open in Notepad.
+- Calendar import now keeps organizers, attendees, locations and meeting links.
+- Shortcut dictation keeps working while a meeting records.
+
+## Notewll 0.11.2 - meetings transcribe without the enhanced model
 
 - Online meetings and conversations no longer fail every section with "Install the Whisper small.en model first" when only the base speech model is installed. English falls back to the local base model; installing the enhanced model still gives the most accurate meeting text.
 - The Holly local speech launcher points at the current Projects folder.

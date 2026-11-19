@@ -24,8 +24,57 @@ namespace Notewll
         public string Error { get; set; }
         public bool Complete { get; set; }
     }
+    // What Notewll could learn about a call: the call app and its window, plus a matching imported calendar invite.
+    sealed class MeetingInfo
+    {
+        public string App { get; set; }
+        public string Name { get; set; }
+        public string WindowTitle { get; set; }
+        public string Code { get; set; }
+        public string Link { get; set; }
+        public string Organizer { get; set; }
+        public List<string> Invitees { get; set; }
+        public string ScheduledUtc { get; set; }
+        public string CallStartedUtc { get; set; }
+        public string CallEndedUtc { get; set; }
+        public bool StartedAutomatically { get; set; }
+        public MeetingInfo() { Invitees = new List<string>(); }
+        [ScriptIgnore]
+        public double? CallSeconds
+        {
+            get
+            {
+                DateTime a, b;
+                if (!DateTime.TryParse(CallStartedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out a) || !DateTime.TryParse(CallEndedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out b)) return null;
+                return Math.Max(0, (b - a).TotalSeconds);
+            }
+        }
+        public static string Local(string utc) { DateTime t; return DateTime.TryParse(utc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out t) ? t.ToLocalTime().ToString("ddd, MMM d, yyyy HH:mm:ss") : ""; }
+        public static List<string> Speakers(NoteDocument note)
+        {
+            var placeholders = new[] { "Unassigned speaker", "Microphone", "Computer audio", "Unknown" };
+            return note.Segments.Where(s => !String.IsNullOrWhiteSpace(s.SpeakerLabel) && !placeholders.Contains(s.SpeakerLabel.Trim(), StringComparer.OrdinalIgnoreCase)).Select(s => s.SpeakerLabel.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+        // Label/value rows shared by the Info dialog and notes.md.
+        public static List<KeyValuePair<string, string>> Rows(NoteDocument note)
+        {
+            var rows = new List<KeyValuePair<string, string>>(); var m = note.Meeting;
+            Action<string, string> add = (k, v) => { if (!String.IsNullOrWhiteSpace(v)) rows.Add(new KeyValuePair<string, string>(k, v)); };
+            if (m == null) return rows;
+            add("Meeting app", m.App); add("Meeting name", m.Name); add("Meeting code", m.Code); add("Meeting link", m.Link);
+            add("Organizer", m.Organizer); add("Invited", m.Invitees.Count == 0 ? null : String.Join(", ", m.Invitees));
+            add("Scheduled for", Local(m.ScheduledUtc)); add("Call started", Local(m.CallStartedUtc)); add("Call ended", Local(m.CallEndedUtc));
+            var seconds = m.CallSeconds; add("Call length", seconds.HasValue ? TimeSpan.FromSeconds(Math.Round(seconds.Value)).ToString(@"h\:mm\:ss") : null);
+            var speakers = Speakers(note); add("Speakers heard", speakers.Count == 0 ? null : String.Join(", ", speakers));
+            add("Introduced themselves", note.Participants.Count == 0 ? null : String.Join(", ", note.Participants));
+            add("Recording", m.StartedAutomatically ? "Started automatically when " + (m.App ?? "the call app") + " opened the microphone" : "Started by you");
+            add("Window", m.WindowTitle);
+            return rows;
+        }
+    }
     sealed class NoteDocument
     {
+        public MeetingInfo Meeting { get; set; }
         public string Id { get; set; }
         public string Title { get; set; }
         public string CreatedUtc { get; set; }
@@ -119,7 +168,34 @@ namespace Notewll
                 string path = Path.Combine(Folder(note), "note.json");
                 AtomicWrite(path, new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Serialize(note));
                 AtomicWrite(Path.Combine(Folder(note), "notes.md"), Markdown(note));
+                ExportMeetingText(note);
             }
+        }
+        // Finished meetings also get a plain-text copy in Documents\Notewll Meetings, one file per meeting, kept current.
+        public static string MeetingFolder { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Notewll Meetings"); } }
+        void ExportMeetingText(NoteDocument note)
+        {
+            if (note.Kind != "Meeting" || note.Status == "Recording" || note.DeletedUtc != null) return;
+            if (!String.Equals(Root, Path.GetFullPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LocalDictation", "Notes")), StringComparison.OrdinalIgnoreCase)) return; // test and diagnostic stores stay private
+            try
+            {
+                string folder = MeetingFolder; Directory.CreateDirectory(folder);
+                string tag = "(" + note.Id.Substring(0, 8) + ").txt";
+                DateTime created; DateTime.TryParse(note.CreatedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out created);
+                string name = note.Meeting != null && !String.IsNullOrWhiteSpace(note.Meeting.Name) ? note.Meeting.Name : note.Meeting != null && note.Meeting.App != null ? note.Meeting.App + " meeting" : "Meeting";
+                foreach (char c in Path.GetInvalidFileNameChars()) name = name.Replace(c, ' ');
+                name = Regex.Replace(name, @"\s+", " ").Trim(); if (name.Length > 80) name = name.Substring(0, 80).Trim();
+                string path = Path.Combine(folder, created.ToLocalTime().ToString("yyyy-MM-dd HH-mm") + " " + name + " " + tag);
+                foreach (var old in Directory.GetFiles(folder, "*" + tag)) if (!String.Equals(old, path, StringComparison.OrdinalIgnoreCase)) File.Delete(old);
+                var text = new StringBuilder();
+                text.AppendLine(note.Title).AppendLine(new string('=', Math.Min(60, Math.Max(10, note.Title.Length)))).AppendLine();
+                foreach (var row in MeetingInfo.Rows(note)) text.AppendLine(row.Key + ": " + row.Value);
+                text.AppendLine("Status: " + note.Status).AppendLine();
+                if (!String.IsNullOrWhiteSpace(note.WrittenNotes)) text.AppendLine("NOTES").AppendLine("-----").AppendLine(note.WrittenNotes.Trim()).AppendLine();
+                text.AppendLine("TRANSCRIPT").AppendLine("----------").AppendLine(Transcript(note).Trim());
+                File.WriteAllText(path, text.ToString().Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(true));
+            }
+            catch { } // the saved note is the source of truth; the text copy is a convenience
         }
         static void AtomicWrite(string path, string text)
         {
@@ -241,7 +317,9 @@ namespace Notewll
         }
         public static string Markdown(NoteDocument note)
         {
+            var meeting = MeetingInfo.Rows(note);
             return "# " + note.Title + "\n\n" + note.CreatedUtc + " | " + note.Mode + " | " + note.Status + "\n\n" +
+                (meeting.Count == 0 ? "" : "## Meeting details\n\n" + String.Join("\n", meeting.Select(r => "- " + r.Key + ": " + r.Value)) + "\n\n") +
                 (String.IsNullOrWhiteSpace(note.UserName) ? "" : "Your name: " + note.UserName + "\n\n") +
                 (note.Participants.Count == 0 ? "" : "Introductions: " + String.Join(", ", note.Participants) + "\n\n") +
                 "## Notes\n\n" + note.WrittenNotes + "\n\n## Transcript\n\n" + Transcript(note) + "\n" + (String.IsNullOrWhiteSpace(note.Summary) ? "" : "\n## Local review (source excerpts)\n\n" + note.Summary + "\n");

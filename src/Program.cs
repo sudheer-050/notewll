@@ -49,6 +49,8 @@ namespace Notewll
                             Console.Write("startup=" + startupPreferences.StartWithWindows + "|ball=" + startupPreferences.ShowToolbar + "|launch=--background"); return 0;
                         }
                     case "--ui-audit": UiAudit.Run(args[1]); return 0;
+                    case "--meeting-detect": Console.Write(MeetingDetector.Describe()); return 0;
+                    case "--calendar-parse": Console.Write(new System.Web.Script.Serialization.JavaScriptSerializer().Serialize(MeetingCalendar.Parse(System.IO.File.ReadAllText(args[1])))); return 0;
                     case "--backend-smoke": BackendVerification.Run(args[1], args[2], args[3]); return 0;
                     case "--themes-smoke": ThemeVerification.Run(args[1], false); return 0;
                     case "--themes-preview": ThemeVerification.Run(args[1], true); return 0;

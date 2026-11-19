@@ -170,6 +170,68 @@ namespace Notewll
         readonly System.Windows.Forms.Timer calendarTimer = new System.Windows.Forms.Timer { Interval = 30000 };
         readonly HashSet<string> remindedMeetings = new HashSet<string>();
         bool calendarErrorReported;
+        // Automatic meeting recording: start after the call app holds the microphone for two polls, stop 30 s after it lets go.
+        readonly System.Windows.Forms.Timer meetingWatch = new System.Windows.Forms.Timer { Interval = 3000 };
+        static readonly TimeSpan MeetingEndGrace = TimeSpan.FromSeconds(30);
+        bool autoMeetingRecording, autoMeetingDeclined, meetingNoticeShown;
+        int meetingSeenPolls;
+        DateTime meetingLastSeenUtc = DateTime.MinValue;
+        string autoMeetingApp;
+        void WatchForMeetings()
+        {
+            if (exiting) return;
+            bool recordingMeeting = hub != null && hub.IsNoteRecording && hub.Notes.Document != null && hub.Notes.Document.Kind == "Meeting";
+            if (!config.AutoRecordMeetings) { autoMeetingRecording = false; meetingSeenPolls = 0; return; }
+            var signal = MeetingDetector.Active(); string app = signal == null ? null : signal.App; var now = DateTime.UtcNow;
+            if (app != null) { if (meetingSeenPolls == 0 && now - meetingLastSeenUtc > MeetingEndGrace) callFirstSeenUtc = now; meetingSeenPolls++; meetingLastSeenUtc = now; } else meetingSeenPolls = 0;
+            bool callEnded = app == null && now - meetingLastSeenUtc > MeetingEndGrace;
+            if (recordingMeeting && signal != null) RecordMeetingDetails(hub.Notes.Document, signal, autoMeetingRecording);
+            if (autoMeetingRecording)
+            {
+                if (!recordingMeeting) { autoMeetingRecording = false; autoMeetingDeclined = !callEnded; return; } // stopped by hand: don't restart during this call
+                if (callEnded)
+                {
+                    var doc = hub.Notes.Document; if (doc.Meeting != null) doc.Meeting.CallEndedUtc = meetingLastSeenUtc.ToString("o");
+                    autoMeetingRecording = false; hub.ToggleNote(hub.NoteMode, "Meeting"); UpdateDock();
+                    meetingNoticeShown = false; tray.ShowBalloonTip(4000, MeetingLabel(autoMeetingApp), "Recording saved", ToolTipIcon.Info);
+                }
+                return;
+            }
+            if (callEnded) autoMeetingDeclined = false;
+            if (app == null || meetingSeenPolls < 2 || autoMeetingDeclined || recordingMeeting) return;
+            if (state.Current != AppState.Idle || hub != null && (hub.IsNoteRecording || hub.NoteBusy)) return; // busy now; try on the next poll
+            ToggleNotes(config.MeetingSource == "Computer" ? "Computer" : "Both", "Meeting");
+            if (hub != null && hub.IsNoteRecording && hub.Notes.Document != null && hub.Notes.Document.Kind == "Meeting")
+            {
+                autoMeetingRecording = true; autoMeetingApp = app;
+                RecordMeetingDetails(hub.Notes.Document, signal, true);
+                meetingNoticeShown = true; tray.ShowBalloonTip(5000, MeetingLabel(app), "Recording started", ToolTipIcon.Info);
+            }
+        }
+        static string MeetingLabel(string app) { return app == "Google Meet" ? "Google Meet" : (app ?? "Online") + " meeting"; }
+        DateTime callFirstSeenUtc;
+        // Fill in what is known about the call; later polls may find a more specific window title.
+        void RecordMeetingDetails(NoteDocument doc, MeetingDetector.Signal signal, bool automatic)
+        {
+            if (doc == null) return;
+            var m = doc.Meeting;
+            if (m == null)
+            {
+                m = doc.Meeting = new MeetingInfo { App = signal.App, StartedAutomatically = automatic, CallStartedUtc = (automatic ? callFirstSeenUtc : DateTime.UtcNow).ToString("o") };
+                doc.Platform = signal.App;
+                var invite = MeetingCalendar.Match(automatic ? callFirstSeenUtc : DateTime.UtcNow, signal.Code, signal.App);
+                if (invite != null) { m.Name = invite.Title; m.Organizer = invite.Organizer; m.Invitees = invite.Attendees ?? new List<string>(); m.Link = invite.Url; m.ScheduledUtc = invite.StartUtc; }
+            }
+            if (!String.IsNullOrWhiteSpace(signal.WindowTitle)) m.WindowTitle = signal.WindowTitle;
+            if (m.Code == null && signal.Code != null) { m.Code = signal.Code; if (m.Link == null && signal.App == "Google Meet") m.Link = "https://meet.google.com/" + signal.Code; }
+            if (m.Name == null && signal.Name != null) m.Name = signal.Name;
+            if (!doc.NameEdited && automatic) { doc.AutoTitle = false; doc.Title = (m.Name ?? m.App + " meeting") + " · " + DateTime.Parse(m.CallStartedUtc, null, System.Globalization.DateTimeStyles.RoundtripKind).ToLocalTime().ToString("MMM d, HH:mm"); }
+        }
+        void StopAutoMeetingFromNotice()
+        {
+            if (!meetingNoticeShown) return; meetingNoticeShown = false;
+            if (autoMeetingRecording && hub != null && hub.IsNoteRecording) { autoMeetingRecording = false; autoMeetingDeclined = true; hub.ToggleNote(hub.NoteMode, "Meeting"); UpdateDock(); }
+        }
         readonly System.Windows.Forms.Timer liveTimer = new System.Windows.Forms.Timer { Interval = 250 };
         readonly ManualResetEvent liveIdle = new ManualResetEvent(true);
         int liveBusy;
@@ -261,6 +323,9 @@ namespace Notewll
             menu.Items.Add("Stop and save note", null, (s, e) => { if (hub != null && hub.IsNoteRecording) hub.ToggleNote(hub.NoteMode); });
             menu.Items.Add("Exit", null, (s, e) => ExitThread());
             tray = new NotifyIcon { Icon = AppLogo.Icon, Text = "Notewll " + StoreDistribution.DisplayVersion + " - hold " + config.Hotkey, Visible = true, ContextMenuStrip = menu };
+            tray.BalloonTipClicked += (s, e) => StopAutoMeetingFromNotice();
+            tray.BalloonTipClosed += (s, e) => meetingNoticeShown = false;
+            meetingWatch.Tick += (s, e) => WatchForMeetings(); meetingWatch.Start();
             dock.RestorePosition(config.ToolbarX, config.ToolbarY);
             dock.Configure(config.ReducedMotion); dock.ConfigureBall(config); dock.CancelWrite = Cancel;
             dock.ToggleWrite = () => { if (handsFree != null || handsFreeStarting) { StopHandsFree(); return; } if (hub != null && hub.IsPracticeListening) hub.StopLocalPractice(); else if (state.Current == AppState.Recording) StopRecording(); else StartRecording(); UpdateDock(); };
@@ -591,7 +656,7 @@ namespace Notewll
             Application.Idle -= WarmWhenUiIdle;
             MicRecorder.ListeningChanged -= MicrophoneListeningChanged;
             Microsoft.Win32.SystemEvents.SessionSwitch -= SessionChangedForHandsFree;
-            calendarTimer.Stop(); calendarTimer.Dispose();
+            calendarTimer.Stop(); calendarTimer.Dispose(); meetingWatch.Stop(); meetingWatch.Dispose();
             exiting = true; StopHandsFree(); ThreadPool.QueueUserWorkItem(_ => MyVoiceMatcher.Shutdown()); generation++; liveTimer.Stop();
             if (recorder != null) { var tail = recorder.Stop(); recovery.Audio = tail; }
             if (recoveryWindow != null) recoveryWindow.Dispose();
