@@ -56,7 +56,11 @@ class Worker:
         if self.model is None or self.model_name != model_name:
             # Installed model required: never download during a recording.
             from pathlib import Path
-            path = Path.home() / (".cache/whisper/" + model_name + ".pt")
+            cache = Path.home() / ".cache" / "whisper"
+            path = cache / (model_name + ".pt")
+            if not path.is_file() and model_name == "small.en" and (cache / "base.pt").is_file():
+                # English falls back to the multilingual base model rather than losing the recording.
+                path = cache / "base.pt"
             if not path.is_file():
                 raise RuntimeError("Install the Whisper " + model_name + " model first")
             self.model = whisper.load_model(str(path), device="cpu")

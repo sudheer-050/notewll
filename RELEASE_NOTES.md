@@ -1,4 +1,10 @@
-﻿# Notewll 0.11.1 - floating ball at startup
+﻿# Notewll 0.11.2 - meetings transcribe without the enhanced model
+
+- Online meetings and conversations no longer fail every section with "Install the Whisper small.en model first" when only the base speech model is installed. English falls back to the local base model; installing the enhanced model still gives the most accurate meeting text.
+- The Holly local speech launcher points at the current Projects folder.
+- Adds a Windows App Certification Kit helper for Store submissions.
+
+## Notewll 0.11.1 - floating ball at startup
 
 - Fresh installations start with Windows by default and show the floating ball without opening the dashboard.
 - Setup launches the app automatically after installation. Existing startup and ball preferences are preserved.
@@ -21,7 +27,7 @@ Unsigned Windows x64 preview. Standard offline English speech is included in the
 
 ## Downloads
 
-- Notewll-Setup-0.11.1.exe: full Windows x64 installer. Existing notes and preferences are preserved.
+- Notewll-Setup-0.11.2.exe: full Windows x64 installer. Existing notes and preferences are preserved.
 - Notewll-Setup.exe: the same installer with a convenient filename.
 - SHA256SUMS-0.11.0.txt: SHA-256 checksums.
 

@@ -1,9 +1,23 @@
-﻿# Notewll Microsoft Store preparation
+# Notewll Microsoft Store preparation
 
 Product: Notewll (myhai)
 Store ID: 9MTSFVDZD1C2
 Submission: 1152921505702228860
 Partner Center: https://partner.microsoft.com/en-us/dashboard/products/9MTSFVDZD1C2/overview
+
+## Update - November 14, 2026 (submitted)
+
+- WACK run on 0.11.1.0: overall PASS (report: verification/wack-0.11.1.0/wack-report.xml). The Blocked-executables test flags powershell.exe/reg use in Notewll.exe plus false positives in model binaries.
+- Partner Center draft: package replaced 0.10.5.0 -> **0.11.1.0** (Validated). runFullTrust explanation updated to mention user-requested powershell.exe/reg setup. All six sections Complete.
+- **Submitted for certification on 2026-11-14.** Status: In certification (pre-processing). Publishing hold remains: "Don't publish until I select Publish now". Not yet published.
+- Still unverified: installed-package desktop acceptance (microphone, Notepad typing, meeting capture, startup, update, uninstall).
+
+## Update - November 14, 2026
+
+- Project moved to C:\Users\gsudh\Projects\local-dictation. Default Holly STT launcher path in src/Core.cs updated to Projects\ollama-personal-model.
+- Built Store package **Notewll-Store-0.11.1.0-x64.msix** (unsigned Store upload), SHA256 `E298F23170DCAC2482F3D0AA9080DA6979F56F65F6B345ABC4A5F1DBD5724ADD`. Staged offline speech check: speech-ready|offline=true.
+- NOT done: WACK (needs Administrator; run scripts/run_wack.ps1), installed-package desktop acceptance, upload of 0.11.1.0 to Partner Center, submission for certification, publication.
+- Partner Center draft still holds package 0.10.2.0.
 
 ## Current readiness review
 
