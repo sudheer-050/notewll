@@ -258,11 +258,15 @@ namespace Notewll
         HashSet<int> noteBinding;
         readonly ShortcutTracker meetingTracker = new ShortcutTracker();
         HashSet<int> meetingBinding;
+        readonly ShortcutTracker promptTracker = new ShortcutTracker();
+        HashSet<int> promptBinding = new HashSet<int>();
+        bool sessionAiPrompt; // this recording was started with the AI prompt shortcut
         void SetShortcutBindings()
         {
             shortcutKeys = Shortcut.Parse(config.Hotkey); shortcutTracker.Reset();
             noteBinding = Shortcut.Parse(config.NotesHotkey); noteTracker.Reset();
             meetingBinding = Shortcut.Parse(config.MeetingHotkey); meetingTracker.Reset();
+            try { promptBinding = Shortcut.Parse(config.PromptHotkey); } catch { promptBinding = new HashSet<int>(); } promptTracker.Reset();
         }
         void ToggleNotes(string mode, string kind = "Note")
         {
@@ -418,9 +422,11 @@ namespace Notewll
             });
         }
 
-        void StartRecording()
+        void StartRecording() { StartRecording(false); }
+        void StartRecording(bool aiPrompt)
         {
             if (state.Current != AppState.Idle || recovering) return;
+            sessionAiPrompt = aiPrompt;
             if (hub != null && hub.IsTesting) return;
             if (config.SpeechLanguage != "en" && !SpeechLanguages.Ready(config)) { Fail("Install multilingual speech in Preferences > Storage > Optional features, or select English."); return; }
             if (handsFree != null || handsFreeStarting) StopHandsFree("Paused for shortcut dictation.");
@@ -433,7 +439,8 @@ namespace Notewll
             try { if (config.PromptMode == "Automatic" && PromptCrafter.ForWindow(PromptCrafter.Load(), historyPlatform, historyWindowTitle) != null) sessionLiveWriting = false; } catch { }
             sessionPrompt = false;
             // Start reading the browser's address now (site name only) so it is ready when the dictation ends.
-            addressLookup = config.PromptMode != "Raw" && new[] { "chrome", "msedge", "brave", "opera", "vivaldi", "arc", "firefox" }.Contains(historyPlatform, StringComparer.OrdinalIgnoreCase) ? BrowserAddress.ReadAsync(target) : null;
+            if (aiPrompt) sessionLiveWriting = false; // the AI request is typed once, after you release the keys
+            addressLookup = (aiPrompt || config.PromptMode != "Raw") && new[] { "chrome", "msedge", "brave", "opera", "vivaldi", "arc", "firefox" }.Contains(historyPlatform, StringComparer.OrdinalIgnoreCase) ? BrowserAddress.ReadAsync(target) : null;
             sessionAccurate = config.SpeechLanguage == "en" && config.AccurateDictationEnabled; lastAccurateBytes = 0;
             try
             {
@@ -488,7 +495,7 @@ namespace Notewll
             state.Move(AppState.Processing);
             DisplayVoiceIndicator("Transcribing locally…", Color.FromArgb(50, 90, 170));
             int gen = ++generation;
-            var cfg = sessionConfig; var recognition = liveRecognition; string app = historyPlatform, window = historyWindowTitle; var promptConfig = config; var lookup = addressLookup;
+            var cfg = sessionConfig; var recognition = liveRecognition; string app = historyPlatform, window = historyWindowTitle; var promptConfig = config; var lookup = addressLookup; bool aiPrompt = sessionAiPrompt;
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
@@ -497,7 +504,7 @@ namespace Notewll
                     string raw = recognition != null ? recognition.Snapshot(pcm, peak, true) : SpeechEngine.Transcribe(cfg, MicRecorder.ToWav(MicRecorder.Normalize(pcm, peak)));
                     if (recognition != null) recognition.Dispose();
                     string finalText = WritingFormat.Compose(cfg, raw); bool prompt = false;
-                    var plan = PromptCrafter.Plan(promptConfig.PromptMode, finalText, app, window, null, BrowserAddress.Result(lookup, 1500));
+                    var plan = aiPrompt ? PromptCrafter.PlanForShortcut(finalText, app, window, BrowserAddress.Result(lookup, 1500)) : PromptCrafter.Plan(promptConfig.PromptMode, finalText, app, window, null, BrowserAddress.Result(lookup, 1500));
                     if (plan != null)
                     {
                         finalText = plan.Text; // the wake word is never typed
@@ -650,9 +657,9 @@ namespace Notewll
                 if (hub != null && hub.IsCapturingShortcut)
                 {
                     if (down || up) hub.CaptureShortcutKey(vk, down);
-                    shortcutTracker.Reset(); noteTracker.Reset(); meetingTracker.Reset(); return (IntPtr)1;
+                    shortcutTracker.Reset(); noteTracker.Reset(); meetingTracker.Reset(); promptTracker.Reset(); return (IntPtr)1;
                 }
-                if ((state.Current == AppState.Recording || state.Current == AppState.Processing) && down && !shortcutKeys.Contains(Shortcut.Normalize(vk)) && vk != Native.VK_ESCAPE) liveInterrupted = true;
+                if ((state.Current == AppState.Recording || state.Current == AppState.Processing) && down && !shortcutKeys.Contains(Shortcut.Normalize(vk)) && !promptBinding.Contains(Shortcut.Normalize(vk)) && vk != Native.VK_ESCAPE) liveInterrupted = true;
                 int transition;
                 bool consume = shortcutTracker.Feed(shortcutKeys, vk, down, out transition);
                 if (transition == 1) PostUi(StartRecording);
@@ -661,6 +668,9 @@ namespace Notewll
                 if (noteTransition == 1) PostUi(() => ToggleNotes("Microphone", "Note"));
                 int meetingTransition; consume |= meetingTracker.Feed(meetingBinding, vk, down, out meetingTransition);
                 if (meetingTransition == 1) PostUi(() => ToggleNotes(config.MeetingSource == "Computer" ? "Computer" : "Both", "Meeting"));
+                int promptTransition; consume |= promptTracker.Feed(promptBinding, vk, down, out promptTransition);
+                if (promptTransition == 1) PostUi(() => StartRecording(true));
+                if (promptTransition == -1) PostUi(() => { if (sessionAiPrompt) StopRecording(); });
                 if (consume) return (IntPtr)1;
                 if (vk == Native.VK_ESCAPE && down && (state.Current == AppState.Recording || state.Current == AppState.Processing)) { PostUi(Cancel); return (IntPtr)1; }
             }

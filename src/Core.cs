@@ -41,6 +41,8 @@ namespace Notewll
         public string Hotkey { get; set; }
         public string NotesHotkey { get; set; }
         public string MeetingHotkey { get; set; }
+        // Hold to dictate a request for an AI: Notewll uses the AI you are typing into (address bar / app) and its prompt guide.
+        public string PromptHotkey { get; set; }
         public string NotesSource { get; set; }
         public string MeetingSource { get; set; }
         public int ToolbarX { get; set; }
@@ -123,7 +125,7 @@ namespace Notewll
             NotesSort = "Newest"; ExportFormat = "PDF"; WritingStyle = "Standard";
             UpdateManifestUrl = UpdatePublisherThumbprint = ""; Theme = "System"; ShowToolbar = true; ShowVoiceIndicator = false; ReduceNoise = true; ReducedMotion = false; NoteMicrophoneId = NoteOutputId = ""; Personalization = new List<PersonalRule>();
             SmartCleanupEnabled = false;
-            Hotkey = "F8"; NotesHotkey = "Ctrl+Shift+N"; MeetingHotkey = "Ctrl+Shift+M"; NotesSource = "Microphone"; MeetingSource = "Both"; ToolbarX = ToolbarY = Int32.MinValue; Microphone = DefaultMic; CleanupEnabled = true; AutoPaste = true; LiveWriting = true; PasteMethod = "Auto"; StartWithWindows = true; AutoStartStt = true;
+            Hotkey = "F8"; NotesHotkey = "Ctrl+Shift+N"; MeetingHotkey = "Ctrl+Shift+M"; PromptHotkey = "Ctrl+Alt+Space"; NotesSource = "Microphone"; MeetingSource = "Both"; ToolbarX = ToolbarY = Int32.MinValue; Microphone = DefaultMic; CleanupEnabled = true; AutoPaste = true; LiveWriting = true; PasteMethod = "Auto"; StartWithWindows = true; AutoStartStt = true;
             SttUrl = "http://127.0.0.1:5000";
             PromptMode = "Raw"; PromptReview = true; PromptEngine = "InChat"; PromptEngineModel = ""; PromptEngineUrl = "";
             SttLauncher = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @"Projects\ollama-personal-model\holly_server.py");
@@ -147,6 +149,7 @@ namespace Notewll
                 if (!legacy.ContainsKey("AccurateDictationEnabled")) value.AccurateDictationEnabled = value.QualityEnabled;
                 if (!legacy.ContainsKey("NotesHotkey") && legacy.ContainsKey("NotesMicrophoneHotkey")) value.NotesHotkey = Convert.ToString(legacy["NotesMicrophoneHotkey"]);
                 if (!legacy.ContainsKey("MeetingHotkey")) value.MeetingHotkey = new[] { "Ctrl+Shift+M", "F9", "F10" }.First(key => key != Shortcut.Format(Shortcut.Parse(value.Hotkey)) && key != Shortcut.Format(Shortcut.Parse(value.NotesHotkey)));
+                if (!legacy.ContainsKey("PromptHotkey")) value.PromptHotkey = new[] { "Ctrl+Alt+Space", "F10", "F11", "Ctrl+Alt+P" }.First(key => new[] { value.Hotkey, value.NotesHotkey, value.MeetingHotkey }.All(other => key != Shortcut.Format(Shortcut.Parse(other))));
                 if (!legacy.ContainsKey("SetupGuideSeen")) value.SetupGuideSeen = true;
                 if (!legacy.ContainsKey("ShowVoiceIndicator")) value.ShowVoiceIndicator = true;
                 value.Validate();
@@ -185,6 +188,8 @@ namespace Notewll
             Hotkey = Shortcut.Format(Shortcut.Parse(Hotkey));
             NotesHotkey = Shortcut.Format(Shortcut.Parse(NotesHotkey));
             MeetingHotkey = Shortcut.Format(Shortcut.Parse(MeetingHotkey));
+            if (String.IsNullOrWhiteSpace(PromptHotkey)) PromptHotkey = "Ctrl+Alt+Space";
+            PromptHotkey = Shortcut.Format(Shortcut.Parse(PromptHotkey));
             if (Personalization == null) Personalization = new List<PersonalRule>();
             if (Array.IndexOf(new[] { "Newest", "Oldest", "Title", "Longest" }, NotesSort) < 0) throw new InvalidDataException("Choose a valid note sort order.");
             if (Array.IndexOf(new[] { "PDF", "Word", "Excel", "CSV" }, ExportFormat) < 0) throw new InvalidDataException("Choose a valid export format.");
@@ -195,7 +200,7 @@ namespace Notewll
             Uri updateUri; if (!String.IsNullOrWhiteSpace(UpdateManifestUrl) && (!Uri.TryCreate(UpdateManifestUrl, UriKind.Absolute, out updateUri) || updateUri.Scheme != "https")) throw new InvalidDataException("Update feeds must use HTTPS.");
             if (!String.IsNullOrWhiteSpace(UpdatePublisherThumbprint) && !Regex.IsMatch(UpdatePublisherThumbprint.Replace(" ", ""), "^[A-Fa-f0-9]{40}$")) throw new InvalidDataException("Use the 40-character Windows certificate thumbprint.");
             PersonalRule.Validate(Personalization);
-            if (new[] { Hotkey, NotesHotkey, MeetingHotkey }.Distinct().Count() != 3) throw new InvalidDataException("Choose a different shortcut for each action: Dictate, Note and Meeting.");
+            if (new[] { Hotkey, NotesHotkey, MeetingHotkey, PromptHotkey }.Distinct().Count() != 4) throw new InvalidDataException("Choose a different shortcut for each action: Dictate, Note, Meeting and AI prompt.");
             if (Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, MeetingSource) < 0) throw new InvalidDataException("Choose valid meeting audio.");
             if (PromptMode == null) PromptMode = "Raw"; if (PromptEngine == null || PromptEngine == "Notewll") PromptEngine = "InChat"; if (PromptEngineModel == null) PromptEngineModel = ""; if (PromptEngineUrl == null) PromptEngineUrl = "";
             if (Array.IndexOf(AiEngines.Ids, PromptEngine) < 0) throw new InvalidDataException("Choose an AI for prompts.");

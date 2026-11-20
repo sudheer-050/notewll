@@ -142,8 +142,8 @@ namespace Notewll
         readonly HubButton savePinned = new HubButton { Text = "Save preferences", Primary = true, Left = 18, Width = 158, Height = 38, Visible = false };
         readonly Label sidebarStatus = new Label { Left = 20, Width = 154, Height = 44, Visible = false, Font = new Font("Segoe UI", 8), ForeColor = Color.FromArgb(61, 115, 90), AutoEllipsis = true };
         readonly System.Collections.Generic.HashSet<int> capturedKeys = new System.Collections.Generic.HashSet<int>();
-        string selectedShortcut, selectedNoteShortcut, selectedMeetingShortcut;
-        readonly HubButton noteShortcut = new HubButton { AccessibleName = "Set Note shortcut" }, meetingShortcut = new HubButton { AccessibleName = "Set Meeting shortcut" };
+        string selectedShortcut, selectedNoteShortcut, selectedMeetingShortcut, selectedPromptShortcut;
+        readonly HubButton noteShortcut = new HubButton { AccessibleName = "Set Note shortcut" }, meetingShortcut = new HubButton { AccessibleName = "Set Meeting shortcut" }, promptShortcut = new HubButton { AccessibleName = "Set AI prompt shortcut" };
         readonly ComboBox noteSource = new ThemedComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
         readonly ComboBox meetingSource = new ThemedComboBox { DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat };
         HubButton captureTarget;
@@ -160,7 +160,7 @@ namespace Notewll
         public string NoteMode { get { return notes == null ? "" : notes.RecordingMode; } }
         public bool IsCapturingShortcut { get; private set; }
         public void BeginShortcutCapture() { BeginShortcutCapture(hotkey); }
-        internal void BeginShortcutCapture(string action) { BeginShortcutCapture(action == "Note" ? noteShortcut : action == "Meeting" ? meetingShortcut : hotkey); }
+        internal void BeginShortcutCapture(string action) { BeginShortcutCapture(action == "Note" ? noteShortcut : action == "Meeting" ? meetingShortcut : action == "Prompt" ? promptShortcut : hotkey); }
         void BeginShortcutCapture(HubButton button)
         {
             if (IsTesting || (CanTest != null && !CanTest())) return;
@@ -175,12 +175,12 @@ namespace Notewll
             if (down) { capturedKeys.Add(Shortcut.Normalize(key)); captureTarget.Text = Shortcut.Format(capturedKeys); captureTarget.Invalidate(); }
             else if (capturedKeys.Count > 0)
             {
-                try { string value = Shortcut.Format(Shortcut.Parse(Shortcut.Format(capturedKeys))); if (captureTarget == noteShortcut) selectedNoteShortcut = value; else if (captureTarget == meetingShortcut) selectedMeetingShortcut = value; else selectedShortcut = value; MarkDirty(); EndShortcutCapture(); saved.Text = "Shortcut captured. Save preferences to apply it."; }
+                try { string value = Shortcut.Format(Shortcut.Parse(Shortcut.Format(capturedKeys))); if (captureTarget == noteShortcut) selectedNoteShortcut = value; else if (captureTarget == meetingShortcut) selectedMeetingShortcut = value; else if (captureTarget == promptShortcut) selectedPromptShortcut = value; else selectedShortcut = value; MarkDirty(); EndShortcutCapture(); saved.Text = "Shortcut captured. Save preferences to apply it."; }
                 catch (Exception ex) { saved.Text = ex.Message; }
             }
         }
         static string ShortcutCaption(string value) { return String.IsNullOrWhiteSpace(value) ? "Add shortcut" : "Change shortcut: " + value.Replace("+", " + "); }
-        void EndShortcutCapture() { IsCapturingShortcut = false; if (captureTarget == null) return; captureTarget.Text = ShortcutCaption(captureTarget == noteShortcut ? selectedNoteShortcut : captureTarget == meetingShortcut ? selectedMeetingShortcut : selectedShortcut); captureTarget.Primary = false; captureTarget.Invalidate(); }
+        void EndShortcutCapture() { IsCapturingShortcut = false; if (captureTarget == null) return; captureTarget.Text = ShortcutCaption(captureTarget == noteShortcut ? selectedNoteShortcut : captureTarget == meetingShortcut ? selectedMeetingShortcut : captureTarget == promptShortcut ? selectedPromptShortcut : selectedShortcut); captureTarget.Primary = false; captureTarget.Invalidate(); }
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
             if (IsCapturingShortcut) return true;
@@ -243,6 +243,7 @@ namespace Notewll
             hotkey.AccessibleName = "Set Dictate shortcut";
             selectedNoteShortcut = config.NotesHotkey; noteShortcut.Text = ShortcutCaption(selectedNoteShortcut); noteShortcut.Click += (s, e) => BeginShortcutCapture(noteShortcut);
             selectedMeetingShortcut = config.MeetingHotkey; meetingShortcut.Text = ShortcutCaption(selectedMeetingShortcut); meetingShortcut.Click += (s, e) => BeginShortcutCapture(meetingShortcut);
+            selectedPromptShortcut = config.PromptHotkey; promptShortcut.Text = ShortcutCaption(selectedPromptShortcut); promptShortcut.Click += (s, e) => BeginShortcutCapture(promptShortcut);
             Deactivate += (s, e) => { if (IsCapturingShortcut) EndShortcutCapture(); };
             mic.Items.Add("Windows default microphone"); foreach (var name in Mics.List()) mic.Items.Add(name);
             int selected = mic.Items.IndexOf(config.Microphone); mic.SelectedIndex = selected > 0 ? selected : 0;
@@ -439,7 +440,7 @@ namespace Notewll
             try
             {
                 if (IsCapturingShortcut) throw new InvalidOperationException("Release your shortcut keys first.");
-                Result = source.Copy(); Result.Hotkey = selectedShortcut; Result.NotesHotkey = selectedNoteShortcut; Result.MeetingHotkey = selectedMeetingShortcut;
+                Result = source.Copy(); Result.Hotkey = selectedShortcut; Result.NotesHotkey = selectedNoteShortcut; Result.MeetingHotkey = selectedMeetingShortcut; Result.PromptHotkey = selectedPromptShortcut;
                 Result.NotesSource = "Microphone"; Result.MeetingSource = new[] { "Computer", "Both" }[meetingSource.SelectedIndex];
                 Result.QualityEnabled = quality.Checked; Result.AccurateDictationEnabled = accurateMode.Checked; Result.Microphone = SelectedMic(); Result.SmartCleanupEnabled = false; Result.CleanupEnabled = cleanup.Checked; Result.AutoPaste = autoPaste.Checked; Result.LiveWriting = liveWriting.Checked;
                 Result.PasteMethod = new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }[pasteMethod.SelectedIndex]; Result.StartWithWindows = startup.Checked;

@@ -77,3 +77,14 @@ def test_known_ais_without_a_guide_are_recognised_but_everyday_words_are_not(spo
 ])
 def test_misheard_ai_names_count_only_when_followed_by_a_pause(spoken, expected):
     assert plan("WakeWord", "notepad", "x", spoken).startswith(expected)
+
+
+@pytest.mark.parametrize("process,title,spoken,expected", [
+    ("chrome", "ChatGPT - Google Chrome", "find restaurants nearby", "plan=ChatGPT|rewrite=True"),
+    ("chrome", "Plan - Claude - Google Chrome", "summarize this report", "plan=Claude|rewrite=True"),
+    ("notepad", "Untitled - Notepad", "write a cover letter for a data analyst job", "plan=General AI|rewrite=True"),
+    ("chrome", "ChatGPT - Google Chrome", "thanks", "plan=ChatGPT|rewrite=False|reason=greeting"),
+    ("chrome", "ChatGPT - Google Chrome", "Claude, compare two laptops for me", "plan=Claude|rewrite=True"),
+])
+def test_ai_prompt_shortcut_always_writes_a_prompt_for_the_ai_in_front(process, title, spoken, expected):
+    assert plan("Shortcut", process, title, spoken).startswith(expected)

@@ -64,7 +64,7 @@ namespace Notewll
             selectedShortcut = source.Hotkey; hotkey.Text = ShortcutCaption(selectedShortcut);
             correctionMode.SelectedIndex = !source.CleanupEnabled ? 0 : source.CleanupLevel == "Light" ? 2 : 1; quality.Checked = source.QualityEnabled; accurateMode.Checked = source.AccurateDictationEnabled; cleanup.Checked = source.CleanupEnabled; autoPaste.Checked = source.AutoPaste; liveWriting.Checked = source.LiveWriting; startup.Checked = source.StartWithWindows;
             toolbarChoice.Checked = source.ShowToolbar; indicatorChoice.Checked = source.ShowVoiceIndicator; motionChoice.Checked = source.ReducedMotion; noiseChoice.Checked = source.ReduceNoise; writingStyle.SelectedItem = source.WritingStyle; themeChoice.SelectedItem = source.Theme;
-            selectedNoteShortcut = source.NotesHotkey; noteShortcut.Text = ShortcutCaption(selectedNoteShortcut); selectedMeetingShortcut = source.MeetingHotkey; meetingShortcut.Text = ShortcutCaption(selectedMeetingShortcut);
+            selectedNoteShortcut = source.NotesHotkey; noteShortcut.Text = ShortcutCaption(selectedNoteShortcut); selectedMeetingShortcut = source.MeetingHotkey; meetingShortcut.Text = ShortcutCaption(selectedMeetingShortcut); selectedPromptShortcut = source.PromptHotkey; promptShortcut.Text = ShortcutCaption(selectedPromptShortcut);
             noteSource.SelectedIndex = 0; meetingSource.SelectedIndex = source.MeetingSource == "Computer" ? 0 : 1;
             mic.SelectedIndex = Math.Max(0, mic.Items.IndexOf(source.Microphone)); pasteMethod.SelectedIndex = Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, source.PasteMethod);
             updateUrl.Text = source.UpdateManifestUrl; updatePublisher.Text = source.UpdatePublisherThumbprint;
@@ -103,6 +103,11 @@ namespace Notewll
             Button(recording, "Get installer to repair", 20, 494, 260, (s, e) => ReleaseUpdates.OpenDownloads(this));
             pendingRules = source.Copy().Personalization;
             BuildSpeechLanguages(recording);
+            // AI prompt shortcut row under Meeting: move everything below it down one row.
+            foreach (Control control in recording.Controls) if (control.Top >= 180) control.Top += 56;
+            Label(recording, "AI prompt (hold to record)", 20, 188, 240, 32, 11, true, Ink); promptShortcut.SetBounds(280, 184, 350, 40); recording.Controls.Add(promptShortcut);
+            promptShortcut.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            recording.Layout += (s, e) => promptShortcut.Width = hotkey.Width;
             var writing = SettingsTab("Writing");
             InitializeCorrectionModes();
             Label(writing, "Insertion & local speech", 20, 12, 620, 24, 11, true, Ink);

@@ -22,9 +22,9 @@ namespace Notewll
         void BuildPromptControls(Panel page, int top)
         {
             Label(page, "AI prompts", 20, top, 620, 26, 11, true, Ink);
-            promptMode.Items.AddRange(new object[] { "Raw text - type exactly what I say", "Wake word - say \"Claude, ...\" or \"ChatGPT, ...\" first", "Automatic - when typing into an AI app or tab" });
+            promptMode.Items.AddRange(new object[] { "Only the AI prompt shortcut - dictation stays as spoken", "Also wake words - \"Claude, ...\" or \"ChatGPT, ...\" with the dictation key", "Also automatic - dictation key in an AI app or tab" });
             Setting(page, promptMode, top + 32);
-            Label(page, "Rewrites your request into a prompt that follows that AI's own guidelines. Greetings and short messages are typed as spoken, and the wake word is never typed.", 20, top + 78, 620, 44, 9, false, Muted);
+            Label(page, "Hold the AI prompt shortcut (Preferences > Recording) and speak: Notewll turns it into a prompt for the AI you're typing into, using that AI's guidelines.", 20, top + 78, 620, 44, 9, false, Muted);
 
             Label(page, "AI that writes prompts", 20, top + 128, 620, 26, 10, true, Ink);
             promptEngine.Items.AddRange(AiEngines.Labels); Setting(page, promptEngine, top + 158);
@@ -67,7 +67,7 @@ namespace Notewll
         {
             if (engineNote == null || promptEngine.SelectedIndex < 0) return;
             string id = SelectedEngine(); bool own = AiEngines.NeedsKey(id);
-            engineNote.Text = id == "InChat" ? "Free and private. Notewll types your words with a short request into the AI you're using: it shows the improved prompt, offers a few optional questions (reply \"go\" to skip), then answers. Notewll sends nothing anywhere." :
+            engineNote.Text = id == "InChat" ? "Free and private: your AI shows an improved prompt and optional questions (reply \"go\" to skip), then answers. Notewll sends nothing." :
                 id == "Notewll" ? "Free. Your request is sent to the Notewll prompt service and Google Gemini to be rewritten, and is not stored." :
                 id == "Gemini" ? "Your request goes straight from this PC to Google. Free keys at aistudio.google.com; on Google's free tier, Google may use requests to improve its products." :
                 id == "Compatible" ? "Your request goes straight from this PC to the provider at the URL below. This option cannot search the web for new guides." :

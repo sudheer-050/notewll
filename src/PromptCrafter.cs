@@ -108,6 +108,25 @@ namespace Notewll
             return plan;
         }
 
+        // The AI prompt shortcut: the person asked for an AI prompt explicitly. Use a spoken AI name if there is one, otherwise
+        // the AI site or app being typed into, otherwise the general guide. Only bare greetings are typed as spoken.
+        public static PromptPlan PlanForShortcut(string text, string processName, string windowTitle, string address, List<PromptGuide> guides = null)
+        {
+            if (String.IsNullOrWhiteSpace(text)) return null;
+            guides = guides ?? Load();
+            string rest; var guide = ByWakeWord(guides, text, out rest); string missing = null;
+            if (guide == null) missing = MissingAi(guides, text, out rest);
+            if (guide == null && missing == null)
+            {
+                rest = text.Trim();
+                guide = ForWindow(guides, processName, windowTitle, address)
+                     ?? guides.FirstOrDefault(g => g.Name == "General AI") ?? ShippedGuides().First(g => g.Name == "General AI");
+            }
+            var plan = new PromptPlan { Guide = guide, MissingAi = missing, Text = rest };
+            if (Greeting.IsMatch(rest.Trim())) plan.Reason = "greeting"; else plan.Rewrite = rest.Trim().Length > 0;
+            return plan;
+        }
+
         // "Claude, write a summary..." -> Claude guide and "write a summary...". The wake word must lead the dictation.
         public static PromptGuide ByWakeWord(List<PromptGuide> guides, string text, out string rest)
         {

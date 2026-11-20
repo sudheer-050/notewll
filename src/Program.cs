@@ -86,7 +86,7 @@ namespace Notewll
                     case "--prompt-plan": // mode process "window title" "dictated text" [rewrite]
                         {
                             var guides = System.Linq.Enumerable.ToList(System.Linq.Enumerable.Select(PromptCrafter.ShippedGuides(), g => g));
-                            var plan = PromptCrafter.Plan(args[1], args[4], args[2], args[3], guides);
+                            var plan = args[1] == "Shortcut" ? PromptCrafter.PlanForShortcut(args[4], args[2], args[3], null, guides) : PromptCrafter.Plan(args[1], args[4], args[2], args[3], guides);
                             Console.WriteLine(plan == null ? "plan=none|text=" + args[4] : "plan=" + (plan.Guide != null ? plan.Guide.Name : "missing:" + plan.MissingAi) + "|rewrite=" + plan.Rewrite + "|reason=" + plan.Reason + "|text=" + plan.Text);
                             if (plan != null && plan.Rewrite && args.Length > 5 && args[5] == "rewrite")
                             {
