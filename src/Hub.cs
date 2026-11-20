@@ -236,6 +236,7 @@ namespace Notewll
             }
             localFooter = Label(sidebar, "●  On your device", 20, 650, 160, 23, 9, false, Color.FromArgb(61, 115, 90));
             privacyFooter = Label(sidebar, "Private by design\nNotes saved locally", 20, 678, 165, 42, 9, false, Muted);
+            BuildSidebarGoogle(sidebar);
             sidebar.Resize += (s, e) => LayoutFooter();
             selectedShortcut = config.Hotkey; hotkey.Text = ShortcutCaption(selectedShortcut);
             hotkey.Click += (s, e) => BeginShortcutCapture();
@@ -269,6 +270,8 @@ namespace Notewll
                 uiScale = graphics.DpiX / 96f;
                 if (uiScale != 1) Scale(new SizeF(uiScale, uiScale));
             }
+            FitToScreen();
+            Shown += (sender, args) => FitToScreen();
             foreach (var page in pages) page.Resize += (s, e) => LayoutPage((Panel)s);
             LayoutFooter(); ShowPage("Home"); ThemeColors.Apply(this, source.Theme); WireDirtyState(); RefreshHome(); buildingHub = false;
             Shown += (sender, args) => BeginInvoke((Action)(() => { LayoutFooter(); foreach (var page in pages) if (page.Visible) LayoutPage(page); }));
@@ -362,12 +365,29 @@ namespace Notewll
             host.PerformLayout(); foreach (var page in pages) if (page.Visible) { page.AutoScrollPosition = Point.Empty; LayoutPage(page); }
             if (openPractice) SetHomePractice(true, true);
         }
+        // At high display scaling the designed size can exceed the screen; keep the whole window (and the sidebar
+        // footer with the Google account button) inside the visible work area above the taskbar.
+        void FitToScreen()
+        {
+            var area = Screen.FromControl(this).WorkingArea;
+            MinimumSize = new Size(Math.Min(MinimumSize.Width, area.Width), Math.Min(MinimumSize.Height, area.Height));
+            if (Width > area.Width) Width = area.Width;
+            if (Height > area.Height) Height = area.Height;
+            if (WindowState == FormWindowState.Normal)
+            {
+                if (Bottom > area.Bottom) Top = Math.Max(area.Top, area.Bottom - Height);
+                if (Right > area.Right) Left = Math.Max(area.Left, area.Right - Width);
+                if (Top < area.Top) Top = area.Top;
+            }
+        }
         void LayoutFooter()
         {
             if (localFooter == null) return;
-            localFooter.Top = sidebar.ClientSize.Height - (int)(82 * uiScale);
-            privacyFooter.Top = sidebar.ClientSize.Height - (int)(55 * uiScale);
-            savePinned.Top = sidebar.ClientSize.Height - (int)(135 * uiScale); sidebarStatus.Top = sidebar.ClientSize.Height - (int)(185 * uiScale);
+            // Bottom of the sidebar: Google account, then the privacy footer, then the pinned Save button above them.
+            if (sidebarGoogle != null) sidebarGoogle.Top = sidebar.ClientSize.Height - (int)(46 * uiScale);
+            localFooter.Top = sidebar.ClientSize.Height - (int)(122 * uiScale);
+            privacyFooter.Top = sidebar.ClientSize.Height - (int)(95 * uiScale);
+            savePinned.Top = sidebar.ClientSize.Height - (int)(175 * uiScale); sidebarStatus.Top = sidebar.ClientSize.Height - (int)(225 * uiScale);
         }
         void LayoutTranscript(Surface card)
         {

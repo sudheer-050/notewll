@@ -42,8 +42,40 @@ namespace Notewll
             });
             LoadPromptSettings(); RefreshGoogleStatus();
         }
+        HubButton sidebarGoogle; bool googleBusy; ToolTip sidebarTip;
+        // Account button at the bottom of the sidebar: "Sign in with Google", or the signed-in email with a Sign out menu.
+        void BuildSidebarGoogle(Panel sidebar)
+        {
+            sidebarGoogle = new HubButton { NavigationIcon = "", Left = 18, Width = 158, Height = 34, AccessibleName = "Google account" };
+            sidebarGoogle.Click += async (s, e) =>
+            {
+                if (googleBusy) return;
+                string email = GoogleAuth.SignedInEmail;
+                if (email != null)
+                {
+                    var menu = DialogUi.PopupMenu();
+                    menu.Items.Add("Signed in as " + email).Enabled = false;
+                    menu.Items.Add("Sign out", null, async (m, a) => { googleBusy = true; try { await Task.Run(() => GoogleAuth.SignOut()); } finally { googleBusy = false; RefreshGoogleStatus(); } });
+                    menu.Show(sidebarGoogle, new System.Drawing.Point(0, -menu.PreferredSize.Height)); return;
+                }
+                if (!NotewllCloud.Configured) { MessageBox.Show(this, "Google sign-in is not available in this build of Notewll yet.", "Sign in with Google"); return; }
+                googleBusy = true; sidebarGoogle.Text = "Check browser…";
+                try { await Task.Run(() => GoogleAuth.SignIn(TimeSpan.FromMinutes(3))); }
+                catch (Exception ex) { MessageBox.Show(this, ex.Message, "Sign in with Google"); }
+                finally { googleBusy = false; RefreshGoogleStatus(); }
+            };
+            sidebar.Controls.Add(sidebarGoogle); RefreshGoogleStatus();
+        }
         void RefreshGoogleStatus()
         {
+            if (sidebarGoogle != null)
+            {
+                string signedIn = GoogleAuth.SignedInEmail;
+                string name = signedIn == null ? null : signedIn.Split('@')[0];
+                sidebarGoogle.Text = signedIn == null ? "Google sign-in" : name.Length > 13 ? name.Substring(0, 12) + "…" : name;
+                if (sidebarTip == null) sidebarTip = new ToolTip();
+                sidebarTip.SetToolTip(sidebarGoogle, signedIn == null ? "Sign in with Google to turn spoken requests into AI prompts" : "Signed in as " + signedIn + ". Click to sign out.");
+            }
             if (googleStatus == null) return;
             string email = GoogleAuth.SignedInEmail;
             googleStatus.Text = !NotewllCloud.Configured ? "Google sign-in is not available in this build yet." : email == null ? "Not signed in. AI prompts are typed as spoken." : "Signed in as " + email;
