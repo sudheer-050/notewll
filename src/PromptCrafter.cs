@@ -214,8 +214,9 @@ namespace Notewll
             string wrapped = guide.Wrap == "xml" ? "<request>\n" + body.Replace("</request>", "") + "\n</request>" : "\"\"\"\n" + body.Replace("\"\"\"", "\"") + "\n\"\"\"";
             return "First, rewrite my request below as a clear, well-structured prompt using " + who + ": " + ask + ". " +
                    "Keep every detail I gave and add nothing I did not say. Show it under the heading \"Improved prompt\". " +
-                   "Next, under \"Missing details\", list up to 3 short questions about information that would make the answer better, or write \"None\". " +
-                   "If a missing detail is essential, stop there and wait for my reply. Otherwise answer the improved prompt in full under the heading \"Answer\", stating any assumptions you made.\n\n" + wrapped;
+                   "If more details would make it better, list up to 3 short questions under \"Optional questions\", ask whether I want to answer them to improve the prompt or reply \"go\" to get the answer now, and wait for my reply. " +
+                   "If I answer them, update the improved prompt and answer it; if I reply go or no, answer the improved prompt as it is. " +
+                   "If nothing important is missing, skip the questions and answer it in full right away under the heading \"Answer\".\n\n" + wrapped;
         }
 
         // A starter guide for an AI Notewll has no guide for. With the AI you're typing into, it applies its own maker's

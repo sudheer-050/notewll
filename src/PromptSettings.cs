@@ -67,7 +67,7 @@ namespace Notewll
         {
             if (engineNote == null || promptEngine.SelectedIndex < 0) return;
             string id = SelectedEngine(); bool own = AiEngines.NeedsKey(id);
-            engineNote.Text = id == "InChat" ? "Free and private. Notewll types your words with a short request into the AI you're using: it shows the improved prompt, asks about missing details, then answers. Notewll sends nothing anywhere." :
+            engineNote.Text = id == "InChat" ? "Free and private. Notewll types your words with a short request into the AI you're using: it shows the improved prompt, offers a few optional questions (reply \"go\" to skip), then answers. Notewll sends nothing anywhere." :
                 id == "Notewll" ? "Free. Your request is sent to the Notewll prompt service and Google Gemini to be rewritten, and is not stored." :
                 id == "Gemini" ? "Your request goes straight from this PC to Google. Free keys at aistudio.google.com; on Google's free tier, Google may use requests to improve its products." :
                 id == "Compatible" ? "Your request goes straight from this PC to the provider at the URL below. This option cannot search the web for new guides." :
