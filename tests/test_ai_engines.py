@@ -109,7 +109,7 @@ def test_in_chat_mode_builds_the_request_locally_and_contacts_nothing(fake, tmp_
     assert code == 0, out
     assert seen == []  # no network call of any kind
     assert "prompt:First, rewrite my request below as a clear, well-structured prompt using Anthropic's prompting best practices for Claude:" in out
-    assert "under the heading \"Improved prompt\"" in out and "answer that improved prompt in full under the heading \"Answer\"" in out and "<request>\nmy python script crashes on empty dates" in out
+    assert "under the heading \"Improved prompt\"" in out and "under \"Missing details\", list up to 3 short questions" in out and "If a missing detail is essential, stop there and wait for my reply." in out and "under the heading \"Answer\", stating any assumptions" in out and "<request>\nmy python script crashes on empty dates" in out
 
 
 def test_in_chat_mode_does_not_research_guides(fake, tmp_path):
