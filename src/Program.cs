@@ -50,6 +50,7 @@ namespace Notewll
                         }
                     case "--ui-audit": UiAudit.Run(args[1]); return 0;
                     case "--meeting-detect": Console.Write(MeetingDetector.Describe()); return 0;
+                    case "--prompt-guides-update": Console.Write(PromptCrafter.Update()); return 0;
                     case "--prompt-review-demo": // prompt spoken
                         {
                             string reviewed = PromptReview.Show("Claude", args[1], args[2], "System");

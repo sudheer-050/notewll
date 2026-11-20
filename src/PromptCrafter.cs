@@ -218,7 +218,7 @@ namespace Notewll
             ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
             var listing = Get(UpdateSource);
             var files = new JavaScriptSerializer().Deserialize<List<Dictionary<string, object>>>(listing);
-            int updated = 0, added = 0, backedUp = 0, same = 0;
+            int updated = 0, added = 0, backedUp = 0, same = 0, kept = 0;
             foreach (var entry in files)
             {
                 string name = entry.ContainsKey("name") ? entry["name"] as string : null, url = entry.ContainsKey("download_url") ? entry["download_url"] as string : null;
@@ -231,6 +231,7 @@ namespace Notewll
                     string current = File.ReadAllText(path);
                     if (Hash(current) == Hash(latest)) { same++; File.WriteAllText(baseline, Normalize(latest), new UTF8Encoding(false)); continue; }
                     bool edited = !File.Exists(baseline) || Hash(current) != Hash(File.ReadAllText(baseline));
+                    if (edited && File.Exists(baseline) && Hash(latest) == Hash(File.ReadAllText(baseline))) { kept++; continue; } // no newer guide: keep the user's edits untouched
                     if (edited) { File.Copy(path, Path.Combine(BackupFolder, Path.GetFileNameWithoutExtension(name) + " " + DateTime.Now.ToString("yyyy-MM-dd HHmm") + ".md"), true); backedUp++; }
                     updated++;
                 }
@@ -238,7 +239,7 @@ namespace Notewll
                 File.WriteAllText(path, Normalize(latest).Replace("\n", "\r\n"), new UTF8Encoding(false));
                 File.WriteAllText(baseline, Normalize(latest), new UTF8Encoding(false));
             }
-            return updated + " updated, " + added + " added, " + same + " already current" + (backedUp > 0 ? "; your edits to " + backedUp + " guide(s) were saved in Prompt guides\\Backups" : "") + ".";
+            return updated + " updated, " + added + " added, " + same + " already current" + (kept > 0 ? ", " + kept + " kept with your edits" : "") + (backedUp > 0 ? "; your edits to " + backedUp + " guide(s) were saved in Prompt guides\\Backups" : "") + ".";
         }
 
         static string Get(string url)
