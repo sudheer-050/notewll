@@ -203,8 +203,8 @@ namespace Notewll
                 "Prompting guidelines for " + guide.Name + ":\n" + guide.Body;
         }
 
-        // The text typed into the person's own AI chat. That AI rewrites the request using its maker's guidance and
-        // replies with the prompt, which the person edits and sends. Short, because it is typed into the chat box.
+        // The text typed into the person's own AI chat. That AI first shows the request rewritten with its maker's
+        // guidance, then answers that improved prompt in the same reply. Short, because it is typed into the chat box.
         public static string InChatRequest(PromptGuide guide, string request)
         {
             string provider = String.IsNullOrEmpty(guide.Provider) || guide.Provider == "Any" ? null : guide.Provider;
@@ -212,8 +212,9 @@ namespace Notewll
             string ask = String.IsNullOrWhiteSpace(guide.Ask) ? "lead with the task, then the context, constraints and the output format I want" : guide.Ask.Trim().TrimEnd('.');
             string body = (request ?? "").Trim();
             string wrapped = guide.Wrap == "xml" ? "<request>\n" + body.Replace("</request>", "") + "\n</request>" : "\"\"\"\n" + body.Replace("\"\"\"", "\"") + "\n\"\"\"";
-            return "Rewrite my request below as a clear, well-structured prompt using " + who + ": " + ask + ". " +
-                   "Keep every detail I gave and add nothing I did not say. Do not answer it yet. Reply with only the rewritten prompt so I can edit and send it.\n\n" + wrapped;
+            return "First, rewrite my request below as a clear, well-structured prompt using " + who + ": " + ask + ". " +
+                   "Keep every detail I gave and add nothing I did not say. Show it under the heading \"Improved prompt\". " +
+                   "Then answer that improved prompt in full under the heading \"Answer\".\n\n" + wrapped;
         }
 
         // A starter guide for an AI Notewll has no guide for. With the AI you're typing into, it applies its own maker's

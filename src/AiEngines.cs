@@ -18,7 +18,7 @@ namespace Notewll
         // "Notewll" (the hosted Gemini service) is kept in code but no longer offered; old settings move to InChat.
         public static readonly string[] Ids = { "InChat", "Gemini", "Anthropic", "OpenAI", "Compatible" };
         public static readonly string[] Labels = {
-            "The AI I'm typing into (free, private) - it writes the prompt in my chat",
+            "The AI I'm typing into (free, private) - shows the improved prompt, then answers it",
             "Google Gemini - my API key",
             "Anthropic Claude - my API key",
             "OpenAI - my API key",

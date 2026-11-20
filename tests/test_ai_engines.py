@@ -108,8 +108,8 @@ def test_in_chat_mode_builds_the_request_locally_and_contacts_nothing(fake, tmp_
     code, out = run(fake, tmp_path, "InChat", "unused", "", "", "rewrite", "my python script crashes on empty dates, make it skip those rows")
     assert code == 0, out
     assert seen == []  # no network call of any kind
-    assert "prompt:Rewrite my request below as a clear, well-structured prompt using Anthropic's prompting best practices for Claude:" in out
-    assert "Do not answer it yet." in out and "<request>\nmy python script crashes on empty dates" in out
+    assert "prompt:First, rewrite my request below as a clear, well-structured prompt using Anthropic's prompting best practices for Claude:" in out
+    assert "under the heading \"Improved prompt\"" in out and "answer that improved prompt in full under the heading \"Answer\"" in out and "<request>\nmy python script crashes on empty dates" in out
 
 
 def test_in_chat_mode_does_not_research_guides(fake, tmp_path):
