@@ -8,3 +8,6 @@ release/
 
 
 .speech-venv/
+
+# Local build secrets (Google OAuth desktop client), bundled at build time, never committed
+.local/

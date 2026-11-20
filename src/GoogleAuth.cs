@@ -14,8 +14,24 @@ namespace Notewll
     // confidential by design (Google treats installed-app secrets as public), and PKCE protects the sign-in.
     static class NotewllCloud
     {
-        public const string DefaultClientId = "";      // set from the Google Cloud console (Desktop app OAuth client)
-        public const string DefaultClientSecret = "";  // the matching installed-app secret
+        // The Desktop app OAuth client is bundled at build time from .local\google-oauth.txt (line 1: client id,
+        // line 2: installed-app secret) so it never lives in the public repository.
+        static string[] bundled;
+        static string Bundled(int line)
+        {
+            if (bundled == null)
+            {
+                try
+                {
+                    using (var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("NotewllCloud.GoogleClient"))
+                        bundled = stream == null ? new string[0] : new StreamReader(stream).ReadToEnd().Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                }
+                catch { bundled = new string[0]; }
+            }
+            return bundled.Length > line ? bundled[line].Trim() : "";
+        }
+        public static string DefaultClientId { get { return Bundled(0); } }
+        public static string DefaultClientSecret { get { return Bundled(1); } }
         public const string DefaultServiceUrl = "https://sudheerkumargandiboyana.com/notewll/api/v1/prompt";
         // Test hooks: point at a local service / fake Google. Production builds use the defaults.
         public static string ServiceUrl { get { return Environment.GetEnvironmentVariable("NOTEWLL_PROMPT_SERVICE_URL") ?? DefaultServiceUrl; } }

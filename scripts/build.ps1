@@ -9,6 +9,8 @@ if (-not (Test-Path $csc)) { throw '.NET Framework 4.x compiler not found.' }
 $sources = Get-ChildItem "$root\src\*.cs" | ForEach-Object { $_.FullName }
 # Default prompt guides ship inside the executable; users get editable copies in Documents\Notewll\Prompt guides.
 $guides = Get-ChildItem "$root\prompt-guides\*.md" | ForEach-Object { "/resource:$($_.FullName),PromptGuide.$($_.Name)" }
+# Google sign-in (desktop OAuth client id + installed-app secret) from an ignored local file; builds without it simply have sign-in unavailable.
+if (Test-Path "$root\.local\google-oauth.txt") { $guides += "/resource:$root\.local\google-oauth.txt,NotewllCloud.GoogleClient" }
 & $csc /nologo /target:winexe /platform:x64 /optimize+ /win32icon:"$root\assets\notewll.ico" /resource:"$root\assets\notewll.ico",AppLogo.ico /resource:"$root\assets\notewll.png",AppLogo.png $guides /win32manifest:"$root\src\app.manifest" /out:"$build\Notewll.exe" /reference:System.Security.dll /reference:System.dll /reference:System.Core.dll /reference:System.Drawing.dll /reference:System.Windows.Forms.dll /reference:System.Web.Extensions.dll /reference:System.IO.Compression.dll /reference:System.IO.Compression.FileSystem.dll $sources
 if ($LASTEXITCODE -ne 0) { throw 'Compilation failed.' }
 # Legacy tooling may still open this filename; the current artifact is Notewll.exe.
