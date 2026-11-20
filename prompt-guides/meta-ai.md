@@ -3,6 +3,8 @@ provider: Meta
 wake: meta ai, llama, hey meta
 apps:
 titles: Meta AI
+ask: give a clear instruction, any role, and an explicit output format and length
+wrap: quotes
 version: 2026-11-20
 ---
 Write the prompt the way Meta recommends prompting Llama-based assistants:

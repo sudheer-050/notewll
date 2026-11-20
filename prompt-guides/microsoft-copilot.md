@@ -3,6 +3,8 @@ provider: Microsoft
 wake: copilot, co pilot, hey copilot, microsoft copilot
 apps: copilot, m365copilot
 titles: Copilot
+ask: state the goal, the context, my expectations for tone, length and format, and any sources I mentioned
+wrap: quotes
 version: 2026-11-20
 ---
 Write the prompt the way Microsoft recommends prompting Copilot:

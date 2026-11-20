@@ -55,10 +55,8 @@ namespace Notewll
         // Start a meeting recording when a call app (Teams, Meet, Zoom, Webex, Slack) opens the microphone; stop when the call ends.
         public bool AutoRecordMeetings { get; set; }
         // AI prompts: "Raw" types what was said; "WakeWord" rewrites when a dictation starts with an AI's name;
-        // "Automatic" also rewrites when typing into a known AI app or tab. Rewriting uses a local Ollama model.
+        // "Automatic" also rewrites when typing into a known AI app or tab. Rewriting needs Sign in with Google.
         public string PromptMode { get; set; }
-        public string PromptModel { get; set; }
-        public string PromptEndpoint { get; set; }
         // Show the rewritten prompt in an editable window before typing it.
         public bool PromptReview { get; set; }
         public int DictionarySort { get; set; }
@@ -123,7 +121,7 @@ namespace Notewll
             SmartCleanupEnabled = false;
             Hotkey = "F8"; NotesHotkey = "Ctrl+Shift+N"; MeetingHotkey = "Ctrl+Shift+M"; NotesSource = "Microphone"; MeetingSource = "Both"; ToolbarX = ToolbarY = Int32.MinValue; Microphone = DefaultMic; CleanupEnabled = true; AutoPaste = true; LiveWriting = true; PasteMethod = "Auto"; StartWithWindows = true; AutoStartStt = true;
             SttUrl = "http://127.0.0.1:5000";
-            PromptMode = "Raw"; PromptModel = "qwen3:8b"; PromptEndpoint = "http://127.0.0.1:11434"; PromptReview = true;
+            PromptMode = "Raw"; PromptReview = true;
             SttLauncher = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @"Projects\ollama-personal-model\holly_server.py");
             SttPythonw = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Programs\Python\Python310\pythonw.exe");
         }
@@ -195,10 +193,8 @@ namespace Notewll
             PersonalRule.Validate(Personalization);
             if (new[] { Hotkey, NotesHotkey, MeetingHotkey }.Distinct().Count() != 3) throw new InvalidDataException("Choose a different shortcut for each action: Dictate, Note and Meeting.");
             if (Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, MeetingSource) < 0) throw new InvalidDataException("Choose valid meeting audio.");
-            if (PromptMode == null) PromptMode = "Raw"; if (String.IsNullOrWhiteSpace(PromptModel)) PromptModel = "qwen3:8b"; if (String.IsNullOrWhiteSpace(PromptEndpoint)) PromptEndpoint = "http://127.0.0.1:11434";
+            if (PromptMode == null) PromptMode = "Raw";
             if (Array.IndexOf(new[] { "Raw", "WakeWord", "Automatic" }, PromptMode) < 0) throw new InvalidDataException("Choose Raw text, Wake word or Automatic for AI prompts.");
-            if (PromptModel.Length > 100 || PromptModel.Any(Char.IsControl)) throw new InvalidDataException("Enter a valid local model name.");
-            PromptCrafter.ValidateEndpoint(PromptEndpoint);
             if (Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, NotesSource) < 0) throw new InvalidDataException("Choose a valid note audio source.");
             if (Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, PasteMethod) < 0) throw new InvalidDataException("Choose a supported paste method.");
             if (String.IsNullOrWhiteSpace(Microphone)) throw new InvalidDataException("Microphone must be 'system-default' or a device name.");

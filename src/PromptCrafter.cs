@@ -14,7 +14,7 @@ namespace Notewll
     // One provider's prompting guide: who it is for, how to recognise it, and the guidance text.
     sealed class PromptGuide
     {
-        public string File, Name, Provider, Version, Body;
+        public string File, Name, Provider, Version, Body, Ask, Wrap;
         public string[] Wake = new string[0], Apps = new string[0], Titles = new string[0];
 
         public static PromptGuide Parse(string file, string text)
@@ -29,6 +29,7 @@ namespace Notewll
                 string key = line.Substring(0, colon).Trim().ToLowerInvariant(), value = line.Substring(colon + 1).Trim();
                 Func<string[]> list = () => value.Split(',').Select(v => v.Trim()).Where(v => v.Length > 0).ToArray();
                 if (key == "name") guide.Name = value; else if (key == "provider") guide.Provider = value; else if (key == "version") guide.Version = value;
+                else if (key == "ask") guide.Ask = value; else if (key == "wrap") guide.Wrap = value.ToLowerInvariant();
                 else if (key == "wake") guide.Wake = list(); else if (key == "apps") guide.Apps = list(); else if (key == "titles") guide.Titles = list();
             }
             guide.Body = text.Substring(split + 4).Trim();
@@ -39,7 +40,7 @@ namespace Notewll
     // What to do with one dictation: which guide applies, the spoken request without the wake word, and whether to rewrite it.
     sealed class PromptPlan { public PromptGuide Guide; public string Text; public bool Rewrite; public string Reason; }
 
-    // Turns a dictated request into a prompt that follows the target AI's own prompting guidance, using a local model.
+    // Turns a dictated request into a prompt that follows the target AI's own prompting guidance (rewritten by the Notewll prompt service).
     // Guides live as editable files in Documents\Notewll\Prompt guides; nothing is fetched unless the user asks for an update.
     static class PromptCrafter
     {
@@ -127,57 +128,38 @@ namespace Notewll
             return guides.FirstOrDefault(g => g.Titles.Any(t => t.Length > 0 && Regex.IsMatch(title, (Char.IsLetterOrDigit(t[0]) ? @"(?<![\p{L}\p{N}])" : "") + Regex.Escape(t) + (Char.IsLetterOrDigit(t[t.Length - 1]) ? @"(?![\p{L}\p{N}])" : ""), RegexOptions.IgnoreCase)));
         }
 
-        public static string Instructions(PromptGuide guide)
-        {
-            return "You rewrite a person's dictated request into a prompt they will send to " + guide.Name + (String.IsNullOrEmpty(guide.Provider) || guide.Provider == "Any" ? "" : " (" + guide.Provider + ")") + ".\n" +
-                "Your job is to make the request clearer and better structured for that assistant by applying the guidelines below.\n" +
-                "Rules:\n" +
-                "1. Output only the finished prompt. No preamble, no explanation, no surrounding quotes, no code fences.\n" +
-                "2. Do not answer or carry out the request. You only write the prompt.\n" +
-                "3. Keep every detail the person gave: every fact, name, number, situation, problem description and requirement. Never drop context such as what something is, what it currently does wrong, who it is for or why it is needed.\n" +
-                "4. Do not invent facts, requirements, audiences, examples or details the person did not give, and do not add qualities they did not ask for (such as engaging, relatable, detailed, official sources). Never turn relative times like \"this year\" into a different year; today is " + DateTime.Now.ToString("MMMM d, yyyy") + ". You may state the output form the request clearly implies (for example: return the updated code, give a bulleted list).\n" +
-                "5. Apply the guidelines: lead with the task, then the context the person gave, then their constraints, then the output they expect.\n" +
-                "6. Write in the person's voice, speaking to the assistant (\"I need...\", \"Write...\", \"Help me...\").\n" +
-                "7. Keep the length proportional: a simple request stays two to four sentences; a long or multi-part request may use short labelled sections or a list.\n" +
-                "8. Remove filler words, false starts and speech-recognition slips. Keep the person's language.\n\n" +
-                "Example of the transformation (format only; never reuse its content):\n" +
-                "Dictated: so my landing page loads slow on phones can you look at the images and tell me what to change, it's a react site\n" +
-                "Prompt: My React landing page loads slowly on mobile phones, and I suspect the images are the cause. Review how the images are loaded and served, and tell me what to change to make the page load faster on mobile. Give the changes as a prioritized list, most impactful first.\n" +
-                "Dictated: uh my node server that sends the invoices crashes when a customer has no email, make it skip them and log it, keep the same route names\n" +
-                "Prompt: I have a Node.js server that sends invoices, and it crashes when a customer has no email address. Update it so it skips customers without an email and logs each one it skips. Keep the existing route names unchanged. Return the updated code.\n\n" +
-                "Prompting guidelines for " + guide.Name + ":\n" + guide.Body;
-        }
-
-        public static void ValidateEndpoint(string endpoint)
-        {
-            Uri uri;
-            if (!Uri.TryCreate(endpoint ?? "", UriKind.Absolute, out uri) || uri.Scheme != "http" || !(uri.IsLoopback)) throw new InvalidDataException("The prompt model must run on this computer (http://127.0.0.1 or http://localhost).");
-        }
-
-        // Ask the local model to load in the background so the first prompt is not slow.
-        public static void Warm(Config config)
-        {
-            if (config.PromptMode == "Raw") return;
-            System.Threading.ThreadPool.QueueUserWorkItem(_ => { try { Post(config, "/api/generate", new Dictionary<string, object> { { "model", config.PromptModel }, { "keep_alive", "30m" } }, 120000); } catch { } });
-        }
-
+        // Rewrite through the Notewll prompt service: the person's Google sign-in proves who they are, and Gemini
+        // applies the guide. Their own (possibly edited) guide text is sent with the request.
         public static string Rewrite(Config config, PromptPlan plan)
         {
+            string token = GoogleAuth.IdToken();
             var body = new Dictionary<string, object>
             {
-                { "model", config.PromptModel }, { "stream", false }, { "think", false }, { "keep_alive", "30m" },
-                { "options", new Dictionary<string, object> { { "temperature", 0.2 }, { "num_predict", 900 } } },
-                { "messages", new object[] {
-                    new Dictionary<string, object> { { "role", "system" }, { "content", Instructions(plan.Guide) } },
-                    new Dictionary<string, object> { { "role", "user" }, { "content", "Dictated request:\n" + plan.Text } } } }
+                { "guide", new Dictionary<string, object> { { "name", plan.Guide.Name }, { "provider", plan.Guide.Provider ?? "Any" }, { "body", plan.Guide.Body.Length > 8000 ? plan.Guide.Body.Substring(0, 8000) : plan.Guide.Body } } },
+                { "request", plan.Text.Length > 4000 ? plan.Text.Substring(0, 4000) : plan.Text }
             };
-            var response = Post(config, "/api/chat", body, 60000);
-            var json = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(response);
-            var message = json.ContainsKey("message") ? json["message"] as Dictionary<string, object> : null;
-            string text = message != null && message.ContainsKey("content") ? message["content"] as string : null;
-            text = Clean(text);
-            if (String.IsNullOrWhiteSpace(text)) throw new InvalidDataException("The local model returned an empty prompt.");
-            return text;
+            ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
+            var request = (HttpWebRequest)WebRequest.Create(NotewllCloud.ServiceUrl);
+            request.Method = "POST"; request.ContentType = "application/json"; request.Timeout = request.ReadWriteTimeout = 30000;
+            request.Headers["Authorization"] = "Bearer " + token; request.UserAgent = "Notewll/" + StoreDistribution.DisplayVersion;
+            byte[] data = Encoding.UTF8.GetBytes(new JavaScriptSerializer().Serialize(body));
+            string text;
+            try
+            {
+                using (var stream = request.GetRequestStream()) stream.Write(data, 0, data.Length);
+                using (var response = request.GetResponse()) using (var reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8)) text = reader.ReadToEnd();
+            }
+            catch (WebException ex)
+            {
+                if (ex.Response == null) throw new IOException("Could not reach the Notewll prompt service. Check your internet connection.");
+                string message = null;
+                try { using (var reader = new StreamReader(ex.Response.GetResponseStream(), Encoding.UTF8)) { var error = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(reader.ReadToEnd()); message = error != null && error.ContainsKey("error") ? error["error"] as string : null; } } catch { }
+                throw new IOException(message ?? "The prompt service could not write the prompt.");
+            }
+            var json = new JavaScriptSerializer().Deserialize<Dictionary<string, object>>(text);
+            string prompt = Clean(json != null && json.ContainsKey("prompt") ? json["prompt"] as string : null);
+            if (String.IsNullOrWhiteSpace(prompt)) throw new IOException("The prompt service returned an empty prompt.");
+            return prompt;
         }
 
         public static string Clean(string text)
@@ -186,26 +168,7 @@ namespace Notewll
             text = Regex.Replace(text, @"^```[a-zA-Z]*\s*|\s*```$", "").Trim();
             text = Regex.Replace(text, @"^(Here is|Here's)[^\n]*prompt[^\n]*:\s*\n", "", RegexOptions.IgnoreCase).Trim();
             if (text.Length > 1 && (text[0] == '"' && text[text.Length - 1] == '"' || text[0] == '“' && text[text.Length - 1] == '”')) text = text.Substring(1, text.Length - 2).Trim();
-            text = Regex.Replace(text.Replace("\r\n", "\n"), @"\n{3,}", "\n\n");
-            return text;
-        }
-
-        static string Post(Config config, string path, object body, int timeout)
-        {
-            ValidateEndpoint(config.PromptEndpoint);
-            var request = (HttpWebRequest)WebRequest.Create(config.PromptEndpoint.TrimEnd('/') + path);
-            request.Method = "POST"; request.ContentType = "application/json"; request.Timeout = request.ReadWriteTimeout = timeout; request.Proxy = null;
-            byte[] data = Encoding.UTF8.GetBytes(new JavaScriptSerializer { MaxJsonLength = Int32.MaxValue }.Serialize(body));
-            try
-            {
-                using (var stream = request.GetRequestStream()) stream.Write(data, 0, data.Length);
-                using (var response = (HttpWebResponse)request.GetResponse()) using (var reader = new StreamReader(response.GetResponseStream(), Encoding.UTF8)) return reader.ReadToEnd();
-            }
-            catch (WebException ex)
-            {
-                if (ex.Response == null) throw new IOException("Ollama is not running at " + config.PromptEndpoint + ". Start Ollama, or switch AI prompts to Raw text.");
-                using (var reader = new StreamReader(ex.Response.GetResponseStream())) throw new IOException("The local model could not write the prompt: " + reader.ReadToEnd());
-            }
+            return Regex.Replace(text.Replace("\r\n", "\n"), @"\n{3,}", "\n\n");
         }
 
         static string Normalize(string text) { return (text ?? "").Replace("\r\n", "\n").Trim() + "\n"; }

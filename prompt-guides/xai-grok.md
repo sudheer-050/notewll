@@ -3,6 +3,8 @@ provider: xAI
 wake: grok, grock, hey grok
 apps: grok
 titles: Grok
+ask: state the task directly, then the context, constraints and the output format
+wrap: quotes
 version: 2026-11-20
 ---
 Write the prompt the way xAI recommends prompting Grok:

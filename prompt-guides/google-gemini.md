@@ -3,6 +3,8 @@ provider: Google
 wake: gemini, hey gemini, google gemini, bard
 apps: gemini
 titles: Gemini
+ask: cover persona if useful, the task, the context and the output format, in natural complete sentences
+wrap: quotes
 version: 2026-11-20
 ---
 Write the prompt the way Google recommends prompting Gemini:

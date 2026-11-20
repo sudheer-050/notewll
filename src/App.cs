@@ -244,7 +244,7 @@ namespace Notewll
         volatile bool prewarming;
         int engineGeneration, lastAccurateBytes;
         string historyPlatform = "Unknown app", historyWindowTitle = "";
-        bool sessionPrompt;
+        bool sessionPrompt; volatile bool promptSignInReminded;
         string sessionSpoken, sessionGuide;
         DateTime historyStarted;
         double historyCaptureSeconds;
@@ -431,7 +431,7 @@ namespace Notewll
             sessionLiveWriting = config.LiveWriting && !(config.CleanupEnabled && config.RichSnippetPaste);
             // Typing into an AI app in Automatic mode: hold the text until the prompt is written instead of showing raw words first.
             try { if (config.PromptMode == "Automatic" && PromptCrafter.ForWindow(PromptCrafter.Load(), historyPlatform, historyWindowTitle) != null) sessionLiveWriting = false; } catch { }
-            PromptCrafter.Warm(config); sessionPrompt = false;
+            sessionPrompt = false;
             sessionAccurate = config.SpeechLanguage == "en" && config.AccurateDictationEnabled; lastAccurateBytes = 0;
             try
             {
@@ -499,6 +499,11 @@ namespace Notewll
                     if (plan != null)
                     {
                         finalText = plan.Text; // the wake word is never typed
+                        if (plan.Rewrite && GoogleAuth.SignedInEmail == null)
+                        {
+                            plan.Rewrite = false;
+                            if (!promptSignInReminded) { promptSignInReminded = true; PostUi(() => ReportIssue("Sign in with Google in Preferences > Writing to turn requests into " + plan.Guide.Name + " prompts. Your words were typed as spoken.")); }
+                        }
                         if (plan.Rewrite)
                         {
                             PostUi(() => { if (gen == generation) DisplayVoiceIndicator("Writing " + plan.Guide.Name + " prompt…", Color.FromArgb(110, 70, 170)); });

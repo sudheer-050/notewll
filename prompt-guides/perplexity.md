@@ -3,6 +3,8 @@ provider: Perplexity
 wake: perplexity, hey perplexity
 apps: perplexity
 titles: Perplexity
+ask: make it one focused, specific question with the details, time frame and kind of sources a search needs
+wrap: quotes
 version: 2026-11-20
 ---
 Write the prompt the way Perplexity recommends for its search-based answers:

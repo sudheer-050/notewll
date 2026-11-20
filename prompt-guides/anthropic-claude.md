@@ -3,6 +3,8 @@ provider: Anthropic
 wake: claude, hey claude, clawed, clod
 apps: claude
 titles: - Claude, Claude.ai, | Claude
+ask: lead with the task, give the context and why it matters, state constraints and the output format, and put any material I included in XML tags
+wrap: xml
 version: 2026-11-20
 ---
 Write the prompt the way Anthropic recommends prompting Claude:

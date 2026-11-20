@@ -51,6 +51,16 @@ namespace Notewll
                     case "--ui-audit": UiAudit.Run(args[1]); return 0;
                     case "--meeting-detect": Console.Write(MeetingDetector.Describe()); return 0;
                     case "--prompt-guides-update": Console.Write(PromptCrafter.Update()); return 0;
+                    case "--google-signin-test": // dataRoot "dictated request"  (uses the NOTEWLL_* test hooks; never the real profile)
+                        {
+                            Config.DiagnosticDataRoot(args[1]);
+                            Console.WriteLine("signed-in:" + GoogleAuth.SignIn(TimeSpan.FromSeconds(60)));
+                            Console.WriteLine("stored-email:" + GoogleAuth.SignedInEmail);
+                            var plan = PromptCrafter.Plan("WakeWord", args[2], "notepad", "x", PromptCrafter.ShippedGuides());
+                            Console.WriteLine("prompt:" + PromptCrafter.Rewrite(new Config(), plan));
+                            GoogleAuth.SignOut(); Console.WriteLine("after-sign-out:" + (GoogleAuth.SignedInEmail ?? "none"));
+                            return 0;
+                        }
                     case "--prompt-review-demo": // prompt spoken
                         {
                             string reviewed = PromptReview.Show("Claude", args[1], args[2], "System");

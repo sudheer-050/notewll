@@ -3,6 +3,8 @@ provider: OpenAI
 wake: chatgpt, chat gpt, chat g p t, hey chatgpt, gpt, openai, open ai
 apps: chatgpt
 titles: ChatGPT
+ask: put the instruction first, be specific about context, outcome, length, format and style, and separate any text I included with delimiters
+wrap: quotes
 version: 2026-11-20
 ---
 Write the prompt the way OpenAI recommends prompting ChatGPT and GPT models:
