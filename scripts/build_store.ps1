@@ -18,6 +18,7 @@ $sources += $versionSource
 $guides = Get-ChildItem "$root\prompt-guides\*.md" | ForEach-Object { "/resource:$($_.FullName),PromptGuide.$($_.Name)" }
 if (Test-Path "$root\.local\google-oauth.txt") { $guides += "/resource:$root\.local\google-oauth.txt,NotewllCloud.GoogleClient" }
 $references = @('System','System.Core','System.Drawing','System.Windows.Forms','System.Web.Extensions','System.Security','System.IO.Compression','System.IO.Compression.FileSystem','System.Runtime','System.Runtime.WindowsRuntime') | ForEach-Object { "/reference:$framework\$_.dll" }
+$references += @('UIAutomationClient','UIAutomationTypes','WindowsBase') | ForEach-Object { "/reference:$framework\WPF\$_.dll" }
 & "$framework\csc.exe" /nologo /target:winexe /platform:x64 /optimize+ /define:STORE_BUILD /win32icon:"$root\assets\notewll.ico" /resource:"$root\assets\notewll.ico",AppLogo.ico /resource:"$root\assets\notewll.png",AppLogo.png $guides /win32manifest:"$root\src\app.manifest" /out:"$stage\Notewll.exe" /reference:"$winmd" $references $sources
 if ($LASTEXITCODE) { throw 'Store application compilation failed.' }
 if ([Diagnostics.FileVersionInfo]::GetVersionInfo("$stage\Notewll.exe").FileVersion -ne $Version) { throw 'Compiled app version does not match the Store package version.' }

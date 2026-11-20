@@ -65,3 +65,15 @@ def test_automatic_uses_the_window_but_not_other_sites():
 ])
 def test_known_ais_without_a_guide_are_recognised_but_everyday_words_are_not(spoken, expected):
     assert plan("WakeWord", "notepad", "x", spoken).startswith(expected)
+
+
+@pytest.mark.parametrize("spoken,expected", [
+    ("Chargy PT, can you help me find restaurants nearby tonight please", "plan=ChatGPT|rewrite=True"),
+    ("Chat GPD, explain how compound interest works for a teenager", "plan=ChatGPT|rewrite=True"),
+    ("Gemmini, plan a three day trip to Chicago in December for us", "plan=Gemini|rewrite=True"),
+    ("Charlie, can you help me find restaurants nearby tonight please", "plan=none"),
+    ("Claudia, can you help me find restaurants nearby tonight please", "plan=none"),
+    ("Chargy PT can you help me find restaurants nearby tonight please", "plan=none"),  # no pause after it: not a wake word
+])
+def test_misheard_ai_names_count_only_when_followed_by_a_pause(spoken, expected):
+    assert plan("WakeWord", "notepad", "x", spoken).startswith(expected)

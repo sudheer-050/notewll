@@ -15,7 +15,7 @@ namespace Notewll
     sealed class PromptGuide
     {
         public string File, Name, Provider, Version, Body, Ask, Wrap;
-        public string[] Wake = new string[0], Apps = new string[0], Titles = new string[0];
+        public string[] Wake = new string[0], Apps = new string[0], Titles = new string[0], Sites = new string[0];
 
         public static PromptGuide Parse(string file, string text)
         {
@@ -30,7 +30,7 @@ namespace Notewll
                 Func<string[]> list = () => value.Split(',').Select(v => v.Trim()).Where(v => v.Length > 0).ToArray();
                 if (key == "name") guide.Name = value; else if (key == "provider") guide.Provider = value; else if (key == "version") guide.Version = value;
                 else if (key == "ask") guide.Ask = value; else if (key == "wrap") guide.Wrap = value.ToLowerInvariant();
-                else if (key == "wake") guide.Wake = list(); else if (key == "apps") guide.Apps = list(); else if (key == "titles") guide.Titles = list();
+                else if (key == "wake") guide.Wake = list(); else if (key == "apps") guide.Apps = list(); else if (key == "titles") guide.Titles = list(); else if (key == "sites") guide.Sites = list();
             }
             guide.Body = text.Substring(split + 4).Trim();
             return guide;
@@ -68,7 +68,11 @@ namespace Notewll
             foreach (var item in Shipped())
             {
                 string path = Path.Combine(Folder, item.Key);
-                if (!File.Exists(path)) { File.WriteAllText(path, item.Value.Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(false)); File.WriteAllText(Path.Combine(BaselineFolder, item.Key), Normalize(item.Value), new UTF8Encoding(false)); }
+                string baseline = Path.Combine(BaselineFolder, item.Key);
+                bool missing = !File.Exists(path);
+                // A newer Notewll ships improved guides: replace a copy only if the person never edited it (it still matches what was shipped).
+                bool stale = !missing && File.Exists(baseline) && Hash(File.ReadAllText(path)) == Hash(File.ReadAllText(baseline)) && Hash(item.Value) != Hash(File.ReadAllText(baseline));
+                if (missing || stale) { File.WriteAllText(path, item.Value.Replace("\r\n", "\n").Replace("\n", "\r\n"), new UTF8Encoding(false)); File.WriteAllText(baseline, Normalize(item.Value), new UTF8Encoding(false)); }
             }
         }
 
@@ -87,14 +91,14 @@ namespace Notewll
         const int MinimumWords = 8;
 
         // Decide what happens to a dictation. Returns null when the text should be typed exactly as dictated.
-        public static PromptPlan Plan(string mode, string text, string processName, string windowTitle, List<PromptGuide> guides = null)
+        public static PromptPlan Plan(string mode, string text, string processName, string windowTitle, List<PromptGuide> guides = null, string address = null)
         {
             if (mode != "WakeWord" && mode != "Automatic" || String.IsNullOrWhiteSpace(text)) return null;
             guides = guides ?? Load();
             string rest; var guide = ByWakeWord(guides, text, out rest);
             string missing = null;
             if (guide == null) missing = MissingAi(guides, text, out rest);
-            if (guide == null && missing == null && mode == "Automatic") { guide = ForWindow(guides, processName, windowTitle); rest = text.Trim(); }
+            if (guide == null && missing == null && mode == "Automatic") { guide = ForWindow(guides, processName, windowTitle, address); rest = text.Trim(); }
             if (guide == null && missing == null) return null;
             var plan = new PromptPlan { Guide = guide, MissingAi = missing, Text = rest };
             int words = Regex.Matches(rest, @"[\p{L}\p{N}']+").Count;
@@ -117,18 +121,60 @@ namespace Notewll
                 if (rest.Length > 0) rest = Char.ToUpperInvariant(rest[0]) + rest.Substring(1);
                 return pair.Guide;
             }
-            return null;
+            return ByMisheardWakeWord(guides, text, out rest);
+        }
+
+        // Speech engines mangle AI names ("ChatGPT" -> "Chargy PT", "chat GPD"). Accept a lead of one to three words that is
+        // close to a wake word, but only when a pause (punctuation) follows it, so "Cloud costs went up..." never triggers.
+        static PromptGuide ByMisheardWakeWord(List<PromptGuide> guides, string text, out string rest)
+        {
+            rest = text;
+            var lead = Regex.Match(text ?? "", @"^\W*(?:(?:hey|hi|ok|okay)\s+)?((?:[\p{L}\p{N}']+[\s-]*){1,3}?)\s*[,.:;!?]+\s*(.+)$", RegexOptions.Singleline);
+            if (!lead.Success) return null;
+            string heard = Squash(lead.Groups[1].Value);
+            if (heard.Length < 5) return null;
+            PromptGuide best = null; int bestDistance = int.MaxValue;
+            foreach (var g in guides)
+                foreach (var w in g.Wake)
+                {
+                    string wake = Squash(Regex.Replace(w, @"^(hey|hi|ok|okay)\s+", ""));
+                    if (wake.Length < 5) continue; // short names (gpt, pi) are too easy to hit by accident
+                    int allowed = wake.Length >= 7 ? 2 : 1, d = Distance(heard, wake);
+                    if (d <= allowed && d < bestDistance && heard[0] == wake[0]) { best = g; bestDistance = d; }
+                }
+            if (best == null) return null;
+            rest = lead.Groups[2].Value.Trim(); if (rest.Length > 0) rest = Char.ToUpperInvariant(rest[0]) + rest.Substring(1);
+            return best;
+        }
+        static string Squash(string s) { return Regex.Replace((s ?? "").ToLowerInvariant(), @"[^a-z0-9]", ""); }
+        static int Distance(string a, string b)
+        {
+            var d = new int[a.Length + 1, b.Length + 1];
+            for (int i = 0; i <= a.Length; i++) d[i, 0] = i; for (int j = 0; j <= b.Length; j++) d[0, j] = j;
+            for (int i = 1; i <= a.Length; i++) for (int j = 1; j <= b.Length; j++)
+                d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1));
+            return d[a.Length, b.Length];
         }
 
         static readonly HashSet<string> Browsers = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "chrome", "msedge", "firefox", "brave", "opera", "vivaldi", "arc" };
         // Automatic mode: the AI desktop app in front, or a browser tab whose title names the AI.
-        public static PromptGuide ForWindow(List<PromptGuide> guides, string processName, string windowTitle)
+        public static PromptGuide ForWindow(List<PromptGuide> guides, string processName, string windowTitle, string address = null)
         {
             string process = processName ?? "", title = windowTitle ?? "";
             var byApp = guides.FirstOrDefault(g => g.Apps.Any(a => a.Equals(process, StringComparison.OrdinalIgnoreCase)));
             if (byApp != null) return byApp;
             if (!Browsers.Contains(process) && !process.Equals("msedgewebview2", StringComparison.OrdinalIgnoreCase)) return null;
+            // The address bar is reliable; tab titles change (ChatGPT names the tab after the conversation).
+            string host = HostOf(address);
+            if (host != null) { var bySite = guides.FirstOrDefault(g => g.Sites.Any(site => host == site.ToLowerInvariant() || host.EndsWith("." + site.ToLowerInvariant()))); if (bySite != null) return bySite; }
             return guides.FirstOrDefault(g => g.Titles.Any(t => t.Length > 0 && Regex.IsMatch(title, (Char.IsLetterOrDigit(t[0]) ? @"(?<![\p{L}\p{N}])" : "") + Regex.Escape(t) + (Char.IsLetterOrDigit(t[t.Length - 1]) ? @"(?![\p{L}\p{N}])" : ""), RegexOptions.IgnoreCase)));
+        }
+
+        public static string HostOf(string address)
+        {
+            if (String.IsNullOrWhiteSpace(address)) return null;
+            string a = address.Trim(); if (!a.Contains("://")) a = "https://" + a;
+            Uri u; return Uri.TryCreate(a, UriKind.Absolute, out u) && u.Host.Contains(".") ? u.Host.ToLowerInvariant() : null;
         }
 
         // Rewrite with the AI the person chose (Notewll service or their own API key).

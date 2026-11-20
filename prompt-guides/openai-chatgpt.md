@@ -2,6 +2,7 @@ name: ChatGPT
 provider: OpenAI
 wake: chatgpt, chat gpt, chat g p t, chad gpt, chat gbt, chat jpt, chat gpd, hey chatgpt, gpt, openai, open ai
 apps: chatgpt
+sites: chatgpt.com, chat.openai.com
 titles: ChatGPT
 ask: put the instruction first, be specific about context, outcome, length, format and style, and separate any text I included with delimiters
 wrap: quotes

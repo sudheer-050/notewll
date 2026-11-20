@@ -2,6 +2,7 @@ name: Grok
 provider: xAI
 wake: grok, grock, hey grok
 apps: grok
+sites: grok.com
 titles: Grok
 ask: state the task directly, then the context, constraints and the output format
 wrap: quotes

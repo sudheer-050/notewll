@@ -2,6 +2,7 @@ name: Gemini
 provider: Google
 wake: gemini, hey gemini, google gemini, bard
 apps: gemini
+sites: gemini.google.com, aistudio.google.com
 titles: Gemini
 ask: cover persona if useful, the task, the context and the output format, in natural complete sentences
 wrap: quotes

@@ -2,6 +2,7 @@ name: Claude
 provider: Anthropic
 wake: claude, hey claude, clawed, clod, cloud ai, hey cloud
 apps: claude
+sites: claude.ai
 titles: - Claude, Claude.ai, | Claude
 ask: lead with the task, give the context and why it matters, state constraints and the output format, and put any material I included in XML tags
 wrap: xml

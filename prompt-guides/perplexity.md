@@ -2,6 +2,7 @@ name: Perplexity
 provider: Perplexity
 wake: perplexity, hey perplexity
 apps: perplexity
+sites: perplexity.ai
 titles: Perplexity
 ask: make it one focused, specific question with the details, time frame and kind of sources a search needs
 wrap: quotes

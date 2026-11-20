@@ -244,7 +244,7 @@ namespace Notewll
         volatile bool prewarming;
         int engineGeneration, lastAccurateBytes;
         string historyPlatform = "Unknown app", historyWindowTitle = "";
-        bool sessionPrompt; volatile bool promptSignInReminded;
+        bool sessionPrompt; volatile bool promptSignInReminded; System.Threading.Tasks.Task<string> addressLookup;
         string sessionSpoken, sessionGuide;
         DateTime historyStarted;
         double historyCaptureSeconds;
@@ -432,6 +432,8 @@ namespace Notewll
             // Typing into an AI app in Automatic mode: hold the text until the prompt is written instead of showing raw words first.
             try { if (config.PromptMode == "Automatic" && PromptCrafter.ForWindow(PromptCrafter.Load(), historyPlatform, historyWindowTitle) != null) sessionLiveWriting = false; } catch { }
             sessionPrompt = false;
+            // Start reading the browser's address now (site name only) so it is ready when the dictation ends.
+            addressLookup = config.PromptMode != "Raw" && new[] { "chrome", "msedge", "brave", "opera", "vivaldi", "arc", "firefox" }.Contains(historyPlatform, StringComparer.OrdinalIgnoreCase) ? BrowserAddress.ReadAsync(target) : null;
             sessionAccurate = config.SpeechLanguage == "en" && config.AccurateDictationEnabled; lastAccurateBytes = 0;
             try
             {
@@ -486,7 +488,7 @@ namespace Notewll
             state.Move(AppState.Processing);
             DisplayVoiceIndicator("Transcribing locally…", Color.FromArgb(50, 90, 170));
             int gen = ++generation;
-            var cfg = sessionConfig; var recognition = liveRecognition; string app = historyPlatform, window = historyWindowTitle; var promptConfig = config;
+            var cfg = sessionConfig; var recognition = liveRecognition; string app = historyPlatform, window = historyWindowTitle; var promptConfig = config; var lookup = addressLookup;
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
@@ -495,7 +497,7 @@ namespace Notewll
                     string raw = recognition != null ? recognition.Snapshot(pcm, peak, true) : SpeechEngine.Transcribe(cfg, MicRecorder.ToWav(MicRecorder.Normalize(pcm, peak)));
                     if (recognition != null) recognition.Dispose();
                     string finalText = WritingFormat.Compose(cfg, raw); bool prompt = false;
-                    var plan = PromptCrafter.Plan(promptConfig.PromptMode, finalText, app, window);
+                    var plan = PromptCrafter.Plan(promptConfig.PromptMode, finalText, app, window, null, BrowserAddress.Result(lookup, 1500));
                     if (plan != null)
                     {
                         finalText = plan.Text; // the wake word is never typed

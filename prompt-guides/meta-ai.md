@@ -2,6 +2,7 @@ name: Meta AI
 provider: Meta
 wake: meta ai, llama, hey meta
 apps:
+sites: meta.ai
 titles: Meta AI
 ask: give a clear instruction, any role, and an explicit output format and length
 wrap: quotes

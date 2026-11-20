@@ -2,6 +2,7 @@ name: General AI
 provider: Any
 wake: prompt, ai prompt, hey ai
 apps:
+sites: 
 titles:
 ask: lead with the task, then context, constraints and the output format
 wrap: quotes

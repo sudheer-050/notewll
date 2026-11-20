@@ -51,6 +51,13 @@ namespace Notewll
                     case "--ui-audit": UiAudit.Run(args[1]); return 0;
                     case "--meeting-detect": Console.Write(MeetingDetector.Describe()); return 0;
                     case "--prompt-guides-update": Console.Write(PromptCrafter.Update()); return 0;
+                    case "--browser-address": // "part of a window title": prints the site of that browser window's address bar
+                        {
+                            var w = Native.FindWindowByTitle(args[1]); var watch = Stopwatch.StartNew();
+                            string host = BrowserAddress.Result(BrowserAddress.ReadAsync(w), 5000);
+                            Console.Write("window:" + (w != IntPtr.Zero) + "|site:" + (host ?? "none") + "|ms:" + watch.ElapsedMilliseconds + "|guide:" + ((PromptCrafter.ForWindow(PromptCrafter.Load(), "chrome", Native.WindowTitle(w), host) ?? new PromptGuide { Name = "none" }).Name));
+                            return 0;
+                        }
                     case "--engine-test": // dataRoot engine key model url rewrite|research "text or AI name"   (tests; never the real profile)
                         {
                             Config.DiagnosticDataRoot(args[1]);

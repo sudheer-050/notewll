@@ -2,6 +2,7 @@ name: Copilot
 provider: Microsoft
 wake: copilot, co pilot, hey copilot, microsoft copilot
 apps: copilot, m365copilot
+sites: copilot.microsoft.com, m365.cloud.microsoft, copilot.cloud.microsoft
 titles: Copilot
 ask: state the goal, the context, my expectations for tone, length and format, and any sources I mentioned
 wrap: quotes
