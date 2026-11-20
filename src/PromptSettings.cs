@@ -54,7 +54,7 @@ namespace Notewll
             promptMode.SelectedIndexChanged += (s, e) => { if (!loadingEngine) MarkDirty(); };
 
             Setting(page, promptReview, top + 392); promptReview.CheckedChanged += (s, e) => { if (!loadingEngine) MarkDirty(); };
-            Label(page, "Prompt guides are files on this PC. Checking for updates or adding an AI sends only the AI's name to the AI chosen above.", 20, top + 432, 620, 40, 9, false, Muted);
+            Label(page, "Prompt guides are files on this PC. Checking for updates downloads the latest guides from Notewll on GitHub (or, with your own key, looks them up with that AI). Only AI names are ever sent.", 20, top + 432, 620, 40, 9, false, Muted);
             Button(page, "Open prompt guides", 20, top + 476, 200, (s, e) => { try { PromptCrafter.EnsureGuides(); Process.Start(new ProcessStartInfo { FileName = PromptCrafter.Folder, UseShellExecute = true }); } catch (Exception ex) { MessageBox.Show(this, ex.Message, "Prompt guides"); } });
             Button(page, "Check all AIs for updates", 230, top + 476, 230, (s, e) => CheckAllGuides());
             Button(page, "Add an AI...", 470, top + 476, 170, (s, e) => AddAiGuide());
@@ -67,11 +67,13 @@ namespace Notewll
         {
             if (engineNote == null || promptEngine.SelectedIndex < 0) return;
             string id = SelectedEngine(); bool own = AiEngines.NeedsKey(id);
-            engineNote.Text = id == "Notewll" ? "Free. Your request is sent to the Notewll prompt service and Google Gemini to be rewritten, and is not stored." :
+            engineNote.Text = id == "InChat" ? "Free and private. Notewll types a short \"rewrite this as a prompt\" request with your words into the AI you're using; it replies with the prompt, which you edit and send. Notewll sends nothing anywhere." :
+                id == "Notewll" ? "Free. Your request is sent to the Notewll prompt service and Google Gemini to be rewritten, and is not stored." :
                 id == "Gemini" ? "Your request goes straight from this PC to Google. Free keys at aistudio.google.com; on Google's free tier, Google may use requests to improve its products." :
                 id == "Compatible" ? "Your request goes straight from this PC to the provider at the URL below. This option cannot search the web for new guides." :
                 "Your request goes straight from this PC to the provider using your key. Notewll's server is not involved.";
-            foreach (var c in new Control[] { googleStatus, googleButton }) c.Visible = !own;
+            foreach (var c in new Control[] { googleStatus, googleButton }) c.Visible = id == "Notewll";
+            promptReview.Enabled = id != "InChat"; // with the AI you're typing into, you edit its reply in the chat
             foreach (var c in new Control[] { keyLabel, engineKey, saveKeyButton, keyStatus, modelLabel, engineModel }) c.Visible = own;
             urlLabel.Visible = engineUrl.Visible = id == "Compatible";
             keyStatus.Text = own ? (AiEngines.HasKey(id) ? "A key is saved, encrypted for your Windows account. Paste a new one to replace it, or save empty to remove it." : "No key saved yet.") : "";
@@ -121,7 +123,7 @@ namespace Notewll
             if (promptMode.Items.Count == 0) return;
             loadingEngine = true;
             promptMode.SelectedIndex = Math.Max(0, Array.IndexOf(PromptModes, source.PromptMode)); promptReview.Checked = source.PromptReview;
-            promptEngine.SelectedIndex = Math.Max(0, Array.IndexOf(AiEngines.Ids, source.PromptEngine ?? "Notewll"));
+            promptEngine.SelectedIndex = Math.Max(0, Array.IndexOf(AiEngines.Ids, source.PromptEngine ?? "InChat"));
             engineModel.Text = source.PromptEngineModel ?? ""; engineUrl.Text = source.PromptEngineUrl ?? "";
             RefreshEngineControls(); loadingEngine = false;
         }
@@ -148,6 +150,12 @@ namespace Notewll
                 if (dialog.ShowDialog(this) != DialogResult.OK) return; name = box.Text.Trim();
             }
             if (name.Length == 0 || name.Length > 60) return;
+            if (!AiEngines.Researches(cfg.PromptEngine))
+            {
+                try { var basic = PromptCrafter.BasicGuide(name, true); MessageBox.Show(this, "Added " + basic.Name + ". Say \"" + basic.Wake.First() + ", ...\" and it will be asked to use its own prompting best practices. You can edit the guide in Prompt guides.", "Prompt guides"); }
+                catch (Exception ex) { MessageBox.Show(this, ex.Message, "Add an AI"); }
+                return;
+            }
             RunGuideWork("Looking up " + name + "…", () =>
             {
                 var guide = PromptCrafter.SaveGuide(AiEngines.Research(cfg, name, null));
@@ -158,6 +166,7 @@ namespace Notewll
         {
             var cfg = EngineConfig(); string why = AiEngines.NotReady(cfg);
             if (why != null) { MessageBox.Show(this, why, "Check for updates"); return; }
+            if (!AiEngines.Researches(cfg.PromptEngine)) { RunGuideWork("Downloading the latest prompt guides…", () => "Prompt guides: " + PromptCrafter.Update()); return; }
             var guides = PromptCrafter.Load().Where(g => g.Name != "General AI").ToList();
             var updates = new List<KeyValuePair<PromptGuide, AiEngines.Guide>>(); var failed = new List<string>();
             RunGuideWork("Checking " + guides.Count + " AIs…", () =>

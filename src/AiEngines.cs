@@ -14,9 +14,11 @@ namespace Notewll
     // Gemini on the developer's key). The others call the provider directly from this PC with the user's own API key.
     static class AiEngines
     {
-        public static readonly string[] Ids = { "Notewll", "Gemini", "Anthropic", "OpenAI", "Compatible" };
+        // "InChat": the AI the person is typing into writes the prompt in their own chat (free, private, nothing to set up).
+        // "Notewll" (the hosted Gemini service) is kept in code but no longer offered; old settings move to InChat.
+        public static readonly string[] Ids = { "InChat", "Gemini", "Anthropic", "OpenAI", "Compatible" };
         public static readonly string[] Labels = {
-            "Notewll (free) - sign in with Google",
+            "The AI I'm typing into (free, private) - it writes the prompt in my chat",
             "Google Gemini - my API key",
             "Anthropic Claude - my API key",
             "OpenAI - my API key",
@@ -26,8 +28,9 @@ namespace Notewll
         {
             switch (id) { case "Gemini": return "gemini-2.5-flash"; case "Anthropic": return "claude-opus-5-5"; case "OpenAI": return "gpt-5-mini"; default: return ""; }
         }
-        public static bool NeedsKey(string id) { return id != "Notewll"; }
-        public static bool CanSearchWeb(string id) { return id != "Compatible"; }
+        public static bool NeedsKey(string id) { return id != "Notewll" && id != "InChat"; }
+        public static bool CanSearchWeb(string id) { return id != "Compatible" && id != "InChat"; }
+        public static bool Researches(string id) { return id != "InChat"; }
         public static string Model(Config c) { return String.IsNullOrWhiteSpace(c.PromptEngineModel) ? DefaultModel(c.PromptEngine) : c.PromptEngineModel.Trim(); }
 
         // ---- API keys: stored per provider, encrypted with Windows DPAPI for the current user only ----
@@ -54,6 +57,7 @@ namespace Notewll
         // Is the chosen engine ready? Returns a reason when it is not.
         public static string NotReady(Config c)
         {
+            if (c.PromptEngine == "InChat") return null;
             if (c.PromptEngine == "Notewll") return GoogleAuth.SignedInEmail == null ? "Sign in with Google in Preferences > Writing to use AI prompts." : null;
             if (!HasKey(c.PromptEngine)) return "Add your API key in Preferences > Writing > AI prompts.";
             if (c.PromptEngine == "Compatible" && (String.IsNullOrWhiteSpace(c.PromptEngineUrl) || String.IsNullOrWhiteSpace(c.PromptEngineModel))) return "Enter the base URL and model for your OpenAI-compatible provider.";
@@ -63,6 +67,7 @@ namespace Notewll
         // ---- The two jobs ----
         public static string Rewrite(Config c, PromptGuide guide, string request)
         {
+            if (c.PromptEngine == "InChat") return PromptCrafter.InChatRequest(guide, request); // no network: the chat's own AI does it
             if (c.PromptEngine == "Notewll") return PromptCrafter.RewriteViaService(guide, request);
             string system = PromptCrafter.Instructions(guide), user = "Dictated request:\n" + request;
             return PromptCrafter.Clean(Complete(c, system, user, false));
@@ -70,6 +75,7 @@ namespace Notewll
         public sealed class Guide { public string Name, Text; public List<string> Sources = new List<string>(); }
         public static Guide Research(Config c, string ai, string current)
         {
+            if (c.PromptEngine == "InChat") throw new InvalidOperationException("Looking up guides needs an AI with your own key; with the AI you're typing into, it applies its own best practices.");
             if (c.PromptEngine == "Notewll") return PromptCrafter.ResearchViaService(ai, current);
             var sources = new List<string>();
             string text = Complete(c, null, PromptCrafter.ResearchInstructions(ai, current, CanSearchWeb(c.PromptEngine)), CanSearchWeb(c.PromptEngine), sources);

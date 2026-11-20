@@ -236,7 +236,7 @@ namespace Notewll
             }
             localFooter = Label(sidebar, "●  On your device", 20, 650, 160, 23, 9, false, Color.FromArgb(61, 115, 90));
             privacyFooter = Label(sidebar, "Private by design\nNotes saved locally", 20, 678, 165, 42, 9, false, Muted);
-            BuildSidebarGoogle(sidebar);
+            // BuildSidebarGoogle(sidebar);  // Google sign-in is hidden while prompts use the AI you're typing into.
             sidebar.Resize += (s, e) => LayoutFooter();
             selectedShortcut = config.Hotkey; hotkey.Text = ShortcutCaption(selectedShortcut);
             hotkey.Click += (s, e) => BeginShortcutCapture();

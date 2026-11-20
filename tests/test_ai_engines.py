@@ -102,3 +102,16 @@ def test_guide_research_uses_web_search(fake, tmp_path, engine, source):
 def test_rejected_key_gives_a_clear_message(fake, tmp_path):
     code, out = run(fake, tmp_path, "Anthropic", "bad-key", "", "", "rewrite", "anything at all here")
     assert code != 0 and "API key was rejected" in out
+
+
+def test_in_chat_mode_builds_the_request_locally_and_contacts_nothing(fake, tmp_path):
+    code, out = run(fake, tmp_path, "InChat", "unused", "", "", "rewrite", "my python script crashes on empty dates, make it skip those rows")
+    assert code == 0, out
+    assert seen == []  # no network call of any kind
+    assert "prompt:Rewrite my request below as a clear, well-structured prompt using Anthropic's prompting best practices for Claude:" in out
+    assert "Do not answer it yet." in out and "<request>\nmy python script crashes on empty dates" in out
+
+
+def test_in_chat_mode_does_not_research_guides(fake, tmp_path):
+    code, out = run(fake, tmp_path, "InChat", "unused", "", "", "research", "DeepSeek")
+    assert code != 0 and "applies its own best practices" in out and seen == []

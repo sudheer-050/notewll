@@ -203,6 +203,34 @@ namespace Notewll
                 "Prompting guidelines for " + guide.Name + ":\n" + guide.Body;
         }
 
+        // The text typed into the person's own AI chat. That AI rewrites the request using its maker's guidance and
+        // replies with the prompt, which the person edits and sends. Short, because it is typed into the chat box.
+        public static string InChatRequest(PromptGuide guide, string request)
+        {
+            string provider = String.IsNullOrEmpty(guide.Provider) || guide.Provider == "Any" ? null : guide.Provider;
+            string who = provider == null ? "prompting best practices" : provider + "'s prompting best practices for " + guide.Name;
+            string ask = String.IsNullOrWhiteSpace(guide.Ask) ? "lead with the task, then the context, constraints and the output format I want" : guide.Ask.Trim().TrimEnd('.');
+            string body = (request ?? "").Trim();
+            string wrapped = guide.Wrap == "xml" ? "<request>\n" + body.Replace("</request>", "") + "\n</request>" : "\"\"\"\n" + body.Replace("\"\"\"", "\"") + "\n\"\"\"";
+            return "Rewrite my request below as a clear, well-structured prompt using " + who + ": " + ask + ". " +
+                   "Keep every detail I gave and add nothing I did not say. Do not answer it yet. Reply with only the rewritten prompt so I can edit and send it.\n\n" + wrapped;
+        }
+
+        // A starter guide for an AI Notewll has no guide for. With the AI you're typing into, it applies its own maker's
+        // practices, so the name and wake words are what matter; the file can be edited or updated later.
+        public static PromptGuide BasicGuide(string name, bool save)
+        {
+            string clean = Regex.Replace(name ?? "", @"[\r\n:,]", " ").Trim(); if (clean.Length == 0 || clean.Length > 60) throw new InvalidDataException("Enter the AI's name.");
+            string spoken = clean.ToLowerInvariant().Replace(".", " ").Replace("-", " ");
+            var known = KnownAis.FirstOrDefault(k => k[0].Equals(clean, StringComparison.OrdinalIgnoreCase));
+            var wake = new List<string> { spoken, "hey " + spoken }; if (known != null) wake.AddRange(known.Skip(1));
+            string text = "name: " + clean + "\nprovider: " + clean + "\nwake: " + String.Join(", ", wake.Distinct()) + "\napps:\ntitles: " + clean +
+                "\nask: lead with the task, then the context, constraints and the output format I want\nwrap: quotes\nversion: " + DateTime.Now.ToString("yyyy-MM-dd") +
+                "\n---\nWrite a clear prompt for " + clean + ":\n\n- State the task first, with a specific action verb.\n- Add the context: purpose, audience and background.\n- State constraints: length, tone, format and what must be included.\n- Separate any supplied text from the instructions.\n- Say what to do rather than what not to do.\n";
+            if (!save) return PromptGuide.Parse(clean + ".md", text);
+            return SaveGuide(new AiEngines.Guide { Name = clean, Text = text });
+        }
+
         // Research request for a prompt guide (same format as the files in Prompt guides).
         public static string ResearchInstructions(string ai, string current, bool webSearch)
         {

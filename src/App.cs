@@ -506,6 +506,11 @@ namespace Notewll
                             plan.Rewrite = false;
                             if (!promptSignInReminded) { promptSignInReminded = true; PostUi(() => ReportIssue(notReady + " Your words for " + aiName + " were typed as spoken.")); }
                         }
+                        if (plan.Rewrite && plan.Guide == null && !AiEngines.Researches(promptConfig.PromptEngine))
+                        {
+                            // The AI being addressed applies its own best practices; just remember its name for next time.
+                            try { plan.Guide = PromptCrafter.BasicGuide(plan.MissingAi, true); } catch { plan.Guide = PromptCrafter.BasicGuide(plan.MissingAi, false); }
+                        }
                         if (plan.Rewrite && plan.Guide == null)
                         {
                             // First use of an AI Notewll has no guide for: look up its prompting guidance once and keep it on this PC.
@@ -540,7 +545,7 @@ namespace Notewll
                 hub.UpdateTranscript(raw, text);
                 if (target == hub.Handle) { state.Move(AppState.Idle); HideVoiceIndicator(); return; }
             }
-            if (sessionPrompt && config.PromptReview)
+            if (sessionPrompt && config.PromptReview && config.PromptEngine != "InChat") // in-chat: the person edits the AI's reply instead
             {
                 // Review the rewritten prompt; the dictation target gets focus back before anything is typed.
                 string reviewed = PromptReview.Show(sessionGuide ?? "AI", text, sessionSpoken ?? lastRaw, config.Theme);

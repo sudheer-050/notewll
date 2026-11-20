@@ -125,7 +125,7 @@ namespace Notewll
             SmartCleanupEnabled = false;
             Hotkey = "F8"; NotesHotkey = "Ctrl+Shift+N"; MeetingHotkey = "Ctrl+Shift+M"; NotesSource = "Microphone"; MeetingSource = "Both"; ToolbarX = ToolbarY = Int32.MinValue; Microphone = DefaultMic; CleanupEnabled = true; AutoPaste = true; LiveWriting = true; PasteMethod = "Auto"; StartWithWindows = true; AutoStartStt = true;
             SttUrl = "http://127.0.0.1:5000";
-            PromptMode = "Raw"; PromptReview = true; PromptEngine = "Notewll"; PromptEngineModel = ""; PromptEngineUrl = "";
+            PromptMode = "Raw"; PromptReview = true; PromptEngine = "InChat"; PromptEngineModel = ""; PromptEngineUrl = "";
             SttLauncher = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), @"Projects\ollama-personal-model\holly_server.py");
             SttPythonw = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), @"Programs\Python\Python310\pythonw.exe");
         }
@@ -197,7 +197,7 @@ namespace Notewll
             PersonalRule.Validate(Personalization);
             if (new[] { Hotkey, NotesHotkey, MeetingHotkey }.Distinct().Count() != 3) throw new InvalidDataException("Choose a different shortcut for each action: Dictate, Note and Meeting.");
             if (Array.IndexOf(new[] { "Microphone", "Computer", "Both" }, MeetingSource) < 0) throw new InvalidDataException("Choose valid meeting audio.");
-            if (PromptMode == null) PromptMode = "Raw"; if (PromptEngine == null) PromptEngine = "Notewll"; if (PromptEngineModel == null) PromptEngineModel = ""; if (PromptEngineUrl == null) PromptEngineUrl = "";
+            if (PromptMode == null) PromptMode = "Raw"; if (PromptEngine == null || PromptEngine == "Notewll") PromptEngine = "InChat"; if (PromptEngineModel == null) PromptEngineModel = ""; if (PromptEngineUrl == null) PromptEngineUrl = "";
             if (Array.IndexOf(AiEngines.Ids, PromptEngine) < 0) throw new InvalidDataException("Choose an AI for prompts.");
             if (PromptEngineModel.Length > 120 || PromptEngineModel.Any(Char.IsControl)) throw new InvalidDataException("Enter a valid model name.");
             if (PromptEngineUrl.Length > 0) { Uri u; if (!Uri.TryCreate(PromptEngineUrl, UriKind.Absolute, out u) || !(u.Scheme == "https" || u.Scheme == "http" && u.IsLoopback)) throw new InvalidDataException("The provider URL must use https (or http on this computer)."); }
