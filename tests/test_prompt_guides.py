@@ -54,3 +54,14 @@ def test_automatic_uses_the_window_but_not_other_sites():
     assert plan("Automatic", "claude", "Claude", LONG).startswith("plan=Claude|rewrite=True")
     assert plan("Automatic", "chrome", "Inbox - Gmail - Google Chrome", LONG).startswith("plan=none")
     assert "rewrite=False" in plan("Automatic", "chrome", "ChatGPT - Google Chrome", "hi")
+
+
+@pytest.mark.parametrize("spoken,expected", [
+    ("DeepSeek, " + LONG, "plan=missing:DeepSeek|rewrite=True"),
+    ("Hey cursor " + LONG, "plan=missing:Cursor|rewrite=True"),
+    ("Midjourney a watercolor fox sitting in a snowy forest at dawn with soft light", "plan=missing:Midjourney|rewrite=True"),
+    ("Cursor is blinking in the corner of the editor and I cannot see the text", "plan=none"),
+    ("Runway lights were off when the plane landed late last night at the airport", "plan=none"),
+])
+def test_known_ais_without_a_guide_are_recognised_but_everyday_words_are_not(spoken, expected):
+    assert plan("WakeWord", "notepad", "x", spoken).startswith(expected)

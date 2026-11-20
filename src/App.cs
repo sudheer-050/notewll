@@ -499,10 +499,19 @@ namespace Notewll
                     if (plan != null)
                     {
                         finalText = plan.Text; // the wake word is never typed
-                        if (plan.Rewrite && GoogleAuth.SignedInEmail == null)
+                        string aiName = plan.Guide != null ? plan.Guide.Name : plan.MissingAi;
+                        string notReady = plan.Rewrite ? AiEngines.NotReady(promptConfig) : null;
+                        if (notReady != null)
                         {
                             plan.Rewrite = false;
-                            if (!promptSignInReminded) { promptSignInReminded = true; PostUi(() => ReportIssue("Sign in with Google in Preferences > Writing to turn requests into " + plan.Guide.Name + " prompts. Your words were typed as spoken.")); }
+                            if (!promptSignInReminded) { promptSignInReminded = true; PostUi(() => ReportIssue(notReady + " Your words for " + aiName + " were typed as spoken.")); }
+                        }
+                        if (plan.Rewrite && plan.Guide == null)
+                        {
+                            // First use of an AI Notewll has no guide for: look up its prompting guidance once and keep it on this PC.
+                            PostUi(() => { if (gen == generation) DisplayVoiceIndicator("Getting a prompt guide for " + aiName + "…", Color.FromArgb(110, 70, 170)); });
+                            try { plan.Guide = PromptCrafter.SaveGuide(AiEngines.Research(promptConfig, plan.MissingAi, null)); string added = plan.Guide.Name; PostUi(() => tray.ShowBalloonTip(4000, "Prompt guide added", added + " is now in your prompt guides.", ToolTipIcon.Info)); }
+                            catch (Exception ex) { plan.Rewrite = false; string why = ex.Message; PostUi(() => ReportIssue("No prompt guide for " + aiName + ": " + why + " Your words were typed as spoken.")); }
                         }
                         if (plan.Rewrite)
                         {

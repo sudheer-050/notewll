@@ -51,6 +51,16 @@ namespace Notewll
                     case "--ui-audit": UiAudit.Run(args[1]); return 0;
                     case "--meeting-detect": Console.Write(MeetingDetector.Describe()); return 0;
                     case "--prompt-guides-update": Console.Write(PromptCrafter.Update()); return 0;
+                    case "--engine-test": // dataRoot engine key model url rewrite|research "text or AI name"   (tests; never the real profile)
+                        {
+                            Config.DiagnosticDataRoot(args[1]);
+                            var cfg = new Config { PromptEngine = args[2], PromptEngineModel = args[4], PromptEngineUrl = args[5] };
+                            AiEngines.SetKey(args[2], args[3]);
+                            Console.WriteLine("key-file-has-plain-key:" + System.IO.File.ReadAllText(System.IO.Path.Combine(args[1], "ai-keys.bin")).Contains(args[3]));
+                            if (args[6] == "rewrite") Console.WriteLine("prompt:" + AiEngines.Rewrite(cfg, PromptCrafter.ShippedGuides().First(g => g.Name == "Claude"), args[7]));
+                            else { var g = AiEngines.Research(cfg, args[7], null); Console.WriteLine("guide:" + g.Name + "|sources:" + String.Join(";", g.Sources) + "|lines:" + g.Text.Split('\n').Length); }
+                            return 0;
+                        }
                     case "--google-signin-test": // dataRoot "dictated request"  (uses the NOTEWLL_* test hooks; never the real profile)
                         {
                             Config.DiagnosticDataRoot(args[1]);
@@ -70,7 +80,7 @@ namespace Notewll
                         {
                             var guides = System.Linq.Enumerable.ToList(System.Linq.Enumerable.Select(PromptCrafter.ShippedGuides(), g => g));
                             var plan = PromptCrafter.Plan(args[1], args[4], args[2], args[3], guides);
-                            Console.WriteLine(plan == null ? "plan=none|text=" + args[4] : "plan=" + plan.Guide.Name + "|rewrite=" + plan.Rewrite + "|reason=" + plan.Reason + "|text=" + plan.Text);
+                            Console.WriteLine(plan == null ? "plan=none|text=" + args[4] : "plan=" + (plan.Guide != null ? plan.Guide.Name : "missing:" + plan.MissingAi) + "|rewrite=" + plan.Rewrite + "|reason=" + plan.Reason + "|text=" + plan.Text);
                             if (plan != null && plan.Rewrite && args.Length > 5 && args[5] == "rewrite")
                             {
                                 var cfg = Config.Load(); var watch = Stopwatch.StartNew(); string prompt = PromptCrafter.Rewrite(cfg, plan);
