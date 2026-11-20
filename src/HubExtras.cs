@@ -69,7 +69,7 @@ namespace Notewll
             mic.SelectedIndex = Math.Max(0, mic.Items.IndexOf(source.Microphone)); pasteMethod.SelectedIndex = Array.IndexOf(new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }, source.PasteMethod);
             updateUrl.Text = source.UpdateManifestUrl; updatePublisher.Text = source.UpdatePublisherThumbprint;
             updateOnStart.Checked = source.CheckUpdatesOnStart;
-            speechLanguage.SelectedIndex = Array.IndexOf(SpeechLanguages.Codes, source.SpeechLanguage); appStyles.Checked = source.AppStylesEnabled; appStyleDraft = source.AppWritingStyles; richSnippetPaste.Checked = source.RichSnippetPaste; meetingReminders.Checked = source.MeetingReminders; autoRecordMeetings.Checked = source.AutoRecordMeetings;
+            speechLanguage.SelectedIndex = Array.IndexOf(SpeechLanguages.Codes, source.SpeechLanguage); appStyles.Checked = source.AppStylesEnabled; appStyleDraft = source.AppWritingStyles; richSnippetPaste.Checked = source.RichSnippetPaste; meetingReminders.Checked = source.MeetingReminders; autoRecordMeetings.Checked = source.AutoRecordMeetings; LoadPromptSettings();
             LoadBallChoices(source);
             pendingRules = source.Copy().Personalization; dirty = false; savePinned.Text = "Save preferences"; return true;
         }
@@ -112,6 +112,7 @@ namespace Notewll
             Button(writing, "Open Style & cleanup", 20, 300, 260, (s, e) => ShowPage("Style"));
             Button(writing, "Dictionary", 20, 350, 180, (s, e) => ShowPage("Dictionary")); Button(writing, "Snippets", 220, 350, 180, (s, e) => ShowPage("Snippets"));
             Label(writing, "Accurate speech needs the optional local setup. Wait for Ready before dictating.\nFormatting and cleanup are together on the Style page.", 20, 412, 620, 70, 10, false, Muted);
+            BuildPromptControls(writing, 490);
             var noteSettings = SettingsTab("Notes");
             Label(noteSettings, "Set Dictate, Note and Meeting shortcuts in Preferences > Recording.", 20, 20, 620, 70, 10, false, Muted);
             Label(noteSettings, "Voice notes and conversations", 20, 120, 620, 28, 11, true, Ink); Setting(noteSettings, noteSource, 158);

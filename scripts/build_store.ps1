@@ -1,4 +1,4 @@
-param([string]$Version = '0.12.1.0')
+param([string]$Version = '0.13.0.0')
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $identity = Get-Content -LiteralPath "$root\store\identity.json" -Raw | ConvertFrom-Json
@@ -15,8 +15,9 @@ $sources = Get-ChildItem "$root\src\*.cs" | ForEach-Object { $_.FullName }
 $versionSource = Join-Path $output 'StoreVersion.cs'
 [IO.File]::WriteAllText($versionSource, "[assembly: System.Reflection.AssemblyVersion(""$Version"")]`r`n[assembly: System.Reflection.AssemblyFileVersion(""$Version"")]")
 $sources += $versionSource
+$guides = Get-ChildItem "$root\prompt-guides\*.md" | ForEach-Object { "/resource:$($_.FullName),PromptGuide.$($_.Name)" }
 $references = @('System','System.Core','System.Drawing','System.Windows.Forms','System.Web.Extensions','System.Security','System.IO.Compression','System.IO.Compression.FileSystem','System.Runtime','System.Runtime.WindowsRuntime') | ForEach-Object { "/reference:$framework\$_.dll" }
-& "$framework\csc.exe" /nologo /target:winexe /platform:x64 /optimize+ /define:STORE_BUILD /win32icon:"$root\assets\notewll.ico" /resource:"$root\assets\notewll.ico",AppLogo.ico /resource:"$root\assets\notewll.png",AppLogo.png /win32manifest:"$root\src\app.manifest" /out:"$stage\Notewll.exe" /reference:"$winmd" $references $sources
+& "$framework\csc.exe" /nologo /target:winexe /platform:x64 /optimize+ /define:STORE_BUILD /win32icon:"$root\assets\notewll.ico" /resource:"$root\assets\notewll.ico",AppLogo.ico /resource:"$root\assets\notewll.png",AppLogo.png $guides /win32manifest:"$root\src\app.manifest" /out:"$stage\Notewll.exe" /reference:"$winmd" $references $sources
 if ($LASTEXITCODE) { throw 'Store application compilation failed.' }
 if ([Diagnostics.FileVersionInfo]::GetVersionInfo("$stage\Notewll.exe").FileVersion -ne $Version) { throw 'Compiled app version does not match the Store package version.' }
 & "$framework\csc.exe" /nologo /target:winexe /platform:x64 /optimize+ /win32manifest:"$root\src\app.manifest" /out:"$stage\NotewllStartup.exe" "$root\store\Startup.cs"

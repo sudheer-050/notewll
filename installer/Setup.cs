@@ -12,14 +12,14 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-[assembly: AssemblyVersion("0.12.1.0")]
+[assembly: AssemblyVersion("0.13.0.0")]
 [assembly: AssemblyTitle("Notewll Setup")]
 [assembly: AssemblyProduct("Notewll")]
 namespace NotewllSetup
 {
     sealed class SetupForm : Form
     {
-        const string Version = "0.12.1", RegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\LocalDictation";
+        const string Version = "0.13.0", RegistryPath = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\LocalDictation";
         const string ModelUrl = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip";
         const string RuntimeUrl = "https://github.com/alphacep/vosk-api/releases/download/v0.3.45/vosk-win64-0.3.45.zip";
         readonly string destination = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "LocalDictation");

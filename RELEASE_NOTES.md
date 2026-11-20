@@ -1,4 +1,13 @@
-﻿# Notewll 0.12.1 - your dictation stays out of meeting transcripts
+﻿# Notewll 0.13.0 - speak to an AI, get a well-written prompt
+
+- New AI prompts setting (Preferences > Writing): Raw text, Wake word or Automatic. Say "Claude, ...", "ChatGPT, ...", "Gemini, ...", "Copilot, ...", "Grok, ...", "Perplexity, ..." or "Meta AI, ..." before your request and Notewll writes it as a prompt that follows that AI's own prompting guidelines. Automatic does the same when you are typing into an AI app or browser tab.
+- Review before typing (on by default): the rewritten prompt opens in an editable window. Type it (Ctrl+Enter), use your own words instead, or discard it (Esc).
+- Rewriting runs on your computer with a local Ollama model (qwen3:8b by default, about 2 to 4 seconds). Greetings and short messages are typed as spoken, and the wake word is never typed.
+- Prompt guides are plain files in Documents\Notewll\Prompt guides that you can read and edit. Update prompt guides downloads the latest guides only when you click it and backs up any guide you edited.
+- Multi-line prompts use Shift+Enter for line breaks so chat boxes do not send early.
+- Includes 0.12.1: your dictation stays out of meeting recordings, and note saving retries when a file is briefly locked.
+
+## Notewll 0.12.1 - your dictation stays out of meeting transcripts
 
 - While you dictate during a meeting recording (shortcut, floating ball or action menu), the meeting's microphone track records silence, plus half a second after you release. Your prompts never reach the meeting audio or transcript; computer audio keeps recording.
 - Saving a note retries briefly when antivirus, search indexing or another program has the file open, instead of reporting "Access is denied".

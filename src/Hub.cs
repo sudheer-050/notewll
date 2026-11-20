@@ -425,7 +425,7 @@ namespace Notewll
                 Result.PasteMethod = new[] { "Auto", "CtrlV", "CtrlShiftV", "ShiftInsert" }[pasteMethod.SelectedIndex]; Result.StartWithWindows = startup.Checked;
                 Result.UpdateManifestUrl = updateUrl.Text.Trim(); Result.UpdatePublisherThumbprint = updatePublisher.Text.Replace(" ", "").Trim();
                 Result.CheckUpdatesOnStart = updateOnStart.Checked; Result.WritingStyle = writingStyle.Text;
-                Result.MeetingReminders = meetingReminders.Checked; Result.AutoRecordMeetings = autoRecordMeetings.Checked; Result.RichSnippetPaste = richSnippetPaste.Checked;
+                Result.MeetingReminders = meetingReminders.Checked; Result.AutoRecordMeetings = autoRecordMeetings.Checked; SavePromptSettings(Result); Result.RichSnippetPaste = richSnippetPaste.Checked;
                 Result.SpeechLanguage = SpeechLanguages.Codes[speechLanguage.SelectedIndex];
                 if (Result.SpeechLanguage != "en" && !SpeechLanguages.Ready(Result)) throw new InvalidOperationException("Install multilingual speech in Storage > Optional features before selecting this language.");
                 Result.CleanupLevel = correctionMode.SelectedIndex == 2 ? "Light" : "Standard"; Result.AppStylesEnabled = appStyles.Checked; Result.AppWritingStyles = appStyleDraft;

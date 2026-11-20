@@ -87,10 +87,13 @@ namespace Notewll
             for (int i = 0; i < edit.Remove; i++) if (!TypeGroup(target, new[] { Key(8, 0), Key(8, KEYEVENTF_KEYUP) })) return false;
             foreach (char c in edit.Append)
             {
+                if (c == '\r' && ShiftEnterNewlines) continue;
+                if (c == '\n' && ShiftEnterNewlines) { if (!TypeGroup(target, new[] { Key(0x10, 0), Key(0x0D, 0), Key(0x0D, KEYEVENTF_KEYUP), Key(0x10, KEYEVENTF_KEYUP) })) return false; continue; }
                 if (!TypeGroup(target, CharacterKeys(c, layout, capsLock))) return false;
             }
             return true;
         }
+        public static bool ShiftEnterNewlines;
         static bool TypeGroup(IntPtr target, Input[] inputs)
         {
             if (GetForegroundWindow() != target || ModifiersDown()) return false;
@@ -241,6 +244,8 @@ namespace Notewll
         volatile bool prewarming;
         int engineGeneration, lastAccurateBytes;
         string historyPlatform = "Unknown app", historyWindowTitle = "";
+        bool sessionPrompt;
+        string sessionSpoken, sessionGuide;
         DateTime historyStarted;
         double historyCaptureSeconds;
         long historyProcessingStarted;
@@ -305,6 +310,7 @@ namespace Notewll
             try { config = Config.Load(); }
             catch (InvalidDataException ex) { config = new Config(); MessageBox.Show(ex.Message + " Defaults will be used.", "Notewll"); }
             overlay.ReducedMotion = config.ReducedMotion;
+            try { PromptCrafter.EnsureGuides(); } catch { } // editable copies in Documents\Notewll\Prompt guides
             var menu = DialogUi.PopupMenu(false);
             menu.Items.Add("Open Notewll", null, (s, e) => ShowHub("Home"));
             menu.Items.Add("Edit copied text by voice...", null, (s, e) => { if (state.Current != AppState.Idle || LocalCommandDialog.OpenCount > 0) return; EnsureHub(); LocalCommandDialog.Show(hub, config.Copy(), Clipboard.ContainsText() ? Clipboard.GetText() : "", null, hub.CanTest); });
@@ -423,6 +429,9 @@ namespace Notewll
             historyStarted = DateTime.UtcNow; historyPlatform = ActivityHistory.ForegroundApp(target); historyWindowTitle = Native.WindowTitle(target);
             sessionConfig = WritingProfiles.Resolve(config, historyPlatform);
             sessionLiveWriting = config.LiveWriting && !(config.CleanupEnabled && config.RichSnippetPaste);
+            // Typing into an AI app in Automatic mode: hold the text until the prompt is written instead of showing raw words first.
+            try { if (config.PromptMode == "Automatic" && PromptCrafter.ForWindow(PromptCrafter.Load(), historyPlatform, historyWindowTitle) != null) sessionLiveWriting = false; } catch { }
+            PromptCrafter.Warm(config); sessionPrompt = false;
             sessionAccurate = config.SpeechLanguage == "en" && config.AccurateDictationEnabled; lastAccurateBytes = 0;
             try
             {
@@ -477,7 +486,7 @@ namespace Notewll
             state.Move(AppState.Processing);
             DisplayVoiceIndicator("Transcribing locally…", Color.FromArgb(50, 90, 170));
             int gen = ++generation;
-            var cfg = sessionConfig; var recognition = liveRecognition;
+            var cfg = sessionConfig; var recognition = liveRecognition; string app = historyPlatform, window = historyWindowTitle; var promptConfig = config;
             ThreadPool.QueueUserWorkItem(_ =>
             {
                 try
@@ -485,8 +494,19 @@ namespace Notewll
                     if (!liveIdle.WaitOne(12000)) throw new SttException("Local speech did not finish. Open Recover last dictation to keep or retry the captured audio.");
                     string raw = recognition != null ? recognition.Snapshot(pcm, peak, true) : SpeechEngine.Transcribe(cfg, MicRecorder.ToWav(MicRecorder.Normalize(pcm, peak)));
                     if (recognition != null) recognition.Dispose();
-                    string finalText = WritingFormat.Compose(cfg, raw);
-                    PostUi(() => { if (!exiting && gen == generation) Finish(raw, finalText); });
+                    string finalText = WritingFormat.Compose(cfg, raw); bool prompt = false;
+                    var plan = PromptCrafter.Plan(promptConfig.PromptMode, finalText, app, window);
+                    if (plan != null)
+                    {
+                        finalText = plan.Text; // the wake word is never typed
+                        if (plan.Rewrite)
+                        {
+                            PostUi(() => { if (gen == generation) DisplayVoiceIndicator("Writing " + plan.Guide.Name + " prompt…", Color.FromArgb(110, 70, 170)); });
+                            try { finalText = PromptCrafter.Rewrite(promptConfig, plan); prompt = true; sessionSpoken = plan.Text; sessionGuide = plan.Guide.Name; }
+                            catch (Exception ex) { string why = ex.Message; PostUi(() => ReportIssue("Prompt was typed as spoken: " + why)); }
+                        }
+                    }
+                    PostUi(() => { if (!exiting && gen == generation) { sessionPrompt = prompt; Finish(raw, finalText); } });
                 }
                 catch (Exception ex) { PostUi(() => { if (gen == generation) Fail(ex.Message); }); }
             });
@@ -506,15 +526,26 @@ namespace Notewll
                 hub.UpdateTranscript(raw, text);
                 if (target == hub.Handle) { state.Move(AppState.Idle); HideVoiceIndicator(); return; }
             }
+            if (sessionPrompt && config.PromptReview)
+            {
+                // Review the rewritten prompt; the dictation target gets focus back before anything is typed.
+                string reviewed = PromptReview.Show(sessionGuide ?? "AI", text, sessionSpoken ?? lastRaw, config.Theme);
+                if (reviewed == null) { Native.SetForegroundWindow(target); Thread.Sleep(120); ApplyLiveText(""); state.Move(AppState.Idle); HideVoiceIndicator(); recovery.Text = text; recovery.Message = "Prompt discarded. You can still copy it here."; return; }
+                if (reviewed == sessionSpoken) sessionPrompt = false; // "Use my words": type it like ordinary dictation
+                text = reviewed; lastCleaned = text; recovery.Text = text;
+                Native.SetForegroundWindow(target); Thread.Sleep(150);
+            }
             if (config.AutoPaste)
             {
-                var formattedSnippet = RichSnippets.Formatted(sessionConfig ?? config, raw);
+                var formattedSnippet = sessionPrompt ? null : RichSnippets.Formatted(sessionConfig ?? config, raw);
                 if (formattedSnippet != null)
                 {
                     try { if (liveInterrupted || !RichSnippets.Paste(sessionConfig, target, formattedSnippet)) throw new InvalidOperationException("Formatted insertion was interrupted. Recover the text before trying again."); state.Move(AppState.Idle); HideVoiceIndicator(); recovery.Discard(); return; }
                     catch (Exception ex) { Fail(ex.Message); return; }
                 }
-                if (ApplyLiveText(text)) { state.Move(AppState.Idle); HideVoiceIndicator(); recovery.Discard(); return; }
+                // Multi-line prompts: Enter would send a chat message early, so line breaks are typed as Shift+Enter.
+                bool typed; Native.ShiftEnterNewlines = sessionPrompt; try { typed = ApplyLiveText(text); } finally { Native.ShiftEnterNewlines = false; }
+                if (typed) { state.Move(AppState.Idle); HideVoiceIndicator(); recovery.Discard(); return; }
                 Fail("Text is ready but typing was interrupted. Open Recover last dictation to review and copy it."); return;
             }
             try { Clipboard.SetDataObject(text, true, 5, 100); }

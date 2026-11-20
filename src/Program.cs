@@ -50,6 +50,23 @@ namespace Notewll
                         }
                     case "--ui-audit": UiAudit.Run(args[1]); return 0;
                     case "--meeting-detect": Console.Write(MeetingDetector.Describe()); return 0;
+                    case "--prompt-review-demo": // prompt spoken
+                        {
+                            string reviewed = PromptReview.Show("Claude", args[1], args[2], "System");
+                            Console.Write(reviewed == null ? "discarded" : "typed:" + reviewed.Replace("\n", "\\n")); return 0;
+                        }
+                    case "--prompt-plan": // mode process "window title" "dictated text" [rewrite]
+                        {
+                            var guides = System.Linq.Enumerable.ToList(System.Linq.Enumerable.Select(PromptCrafter.ShippedGuides(), g => g));
+                            var plan = PromptCrafter.Plan(args[1], args[4], args[2], args[3], guides);
+                            Console.WriteLine(plan == null ? "plan=none|text=" + args[4] : "plan=" + plan.Guide.Name + "|rewrite=" + plan.Rewrite + "|reason=" + plan.Reason + "|text=" + plan.Text);
+                            if (plan != null && plan.Rewrite && args.Length > 5 && args[5] == "rewrite")
+                            {
+                                var cfg = Config.Load(); var watch = Stopwatch.StartNew(); string prompt = PromptCrafter.Rewrite(cfg, plan);
+                                Console.WriteLine("seconds=" + watch.Elapsed.TotalSeconds.ToString("0.0")); Console.WriteLine(prompt);
+                            }
+                            return 0;
+                        }
                     case "--private-mic-check":
                         {
                             Func<bool> muted = () => NotesSession.MicrophonePrivate;
