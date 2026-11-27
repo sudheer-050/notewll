@@ -1,10 +1,13 @@
-﻿# Notewll 0.13.0 - speak to an AI, get a well-written prompt
+﻿# Notewll 0.13.0 - speak to an AI, get a better prompt and the answer
 
-- New AI prompts setting (Preferences > Writing): Raw text, Wake word or Automatic. Say "Claude, ...", "ChatGPT, ...", "Gemini, ...", "Copilot, ...", "Grok, ...", "Perplexity, ..." or "Meta AI, ..." before your request and Notewll writes it as a prompt that follows that AI's own prompting guidelines. Automatic does the same when you are typing into an AI app or browser tab.
-- Review before typing (on by default): the rewritten prompt opens in an editable window. Type it (Ctrl+Enter), use your own words instead, or discard it (Esc).
-- Rewriting runs on your computer with a local Ollama model (qwen3:8b by default, about 2 to 4 seconds). Greetings and short messages are typed as spoken, and the wake word is never typed.
-- Prompt guides are plain files in Documents\Notewll\Prompt guides that you can read and edit. Update prompt guides downloads the latest guides only when you click it and backs up any guide you edited.
-- Multi-line prompts use Shift+Enter for line breaks so chat boxes do not send early.
+- New AI prompt shortcut (default Ctrl+Alt+Space; change it in Preferences > Recording). Hold it, say your request, release: Notewll types it into the AI you are using - ChatGPT, Claude, Gemini, Copilot, Grok, Perplexity, Meta AI or any other - asking that AI to show an improved version of your prompt using its maker's own prompting best practices, offer a few optional questions (reply "go" to skip them), and then answer it.
+- Free and private: the AI you already use does the work in your own chat. Notewll runs no AI model, sends nothing anywhere and adds almost nothing to its size.
+- Works out which AI you are in from the browser's address bar (chatgpt.com, claude.ai, gemini.google.com and more) or the desktop app, even when the tab is named after the conversation. Elsewhere it uses a general prompt guide.
+- Your normal dictation key keeps typing exactly what you say. Optional: wake words ("Claude, ..." with the dictation key, including common mishearings) or Automatic mode, in Preferences > Writing.
+- Prompt guides are plain files in Documents\Notewll\Prompt guides that you can read and edit. Check all AIs for updates downloads the latest guides; Add an AI... adds one; guides you edited are never overwritten.
+- Optional: use your own API key (Google Gemini, Anthropic Claude, OpenAI or any OpenAI-compatible provider) to have the prompt written and shown in an edit window before it is typed; keys are stored encrypted on your PC.
+- Multi-line requests use Shift+Enter for line breaks so chat boxes do not send early.
+- The Notewll window now fits on screen at high display scaling.
 - Includes 0.12.1: your dictation stays out of meeting recordings, and note saving retries when a file is briefly locked.
 
 ## Notewll 0.12.1 - your dictation stays out of meeting transcripts
