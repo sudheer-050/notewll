@@ -51,6 +51,7 @@ namespace Notewll
                     case "--ui-audit": UiAudit.Run(args[1]); return 0;
                     case "--meeting-detect": Console.Write(MeetingDetector.Describe()); return 0;
                     case "--prompt-guides-update": Console.Write(PromptCrafter.Update()); return 0;
+                    case "--prompt-setup-demo": Console.Write("choice:" + PromptSetup.Show("System", args.Length > 1 ? args[1] : null)); return 0;
                     case "--browser-address": // "part of a window title": prints the site of that browser window's address bar
                         {
                             var w = Native.FindWindowByTitle(args[1]); var watch = Stopwatch.StartNew();

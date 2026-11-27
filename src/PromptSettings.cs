@@ -118,6 +118,12 @@ namespace Notewll
             googleStatus.Text = !NotewllCloud.Configured ? "Google sign-in is not available in this build yet." : email == null ? "Not signed in." : "Signed in as " + email;
             googleButton.Text = email == null ? "Sign in with Google" : "Sign out"; googleButton.Enabled = NotewllCloud.Configured || email != null;
         }
+        // The AI prompt setup window was answered outside Preferences: keep this window's copy in step so a later Save keeps it.
+        internal void AdoptPromptChoice(Config chosen)
+        {
+            source.PromptSetupSeen = chosen.PromptSetupSeen; source.PromptEngine = chosen.PromptEngine;
+            LoadPromptSettings();
+        }
         void LoadPromptSettings()
         {
             if (promptMode.Items.Count == 0) return;

@@ -1,4 +1,10 @@
-﻿# Notewll 0.13.0 - speak to an AI, get a better prompt and the answer
+﻿# Notewll 0.13.1 - AI prompts guide you the first time
+
+- The first time you use the AI prompt shortcut, a short window explains it and asks how prompts should be written: the AI you're typing into (free and private, recommended) or your own API key. Your request is kept and continues as soon as you choose.
+- If you chose your own API key but have not added it yet, the shortcut opens the same window instead of quietly typing your words as spoken.
+- Not now types your words as spoken and asks again next time.
+
+## Notewll 0.13.0 - speak to an AI, get a better prompt and the answer
 
 - New AI prompt shortcut (default Ctrl+Alt+Space; change it in Preferences > Recording). Hold it, say your request, release: Notewll types it into the AI you are using - ChatGPT, Claude, Gemini, Copilot, Grok, Perplexity, Meta AI or any other - asking that AI to show an improved version of your prompt using its maker's own prompting best practices, offer a few optional questions (reply "go" to skip them), and then answer it.
 - Free and private: the AI you already use does the work in your own chat. Notewll runs no AI model, sends nothing anywhere and adds almost nothing to its size.

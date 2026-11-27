@@ -505,6 +505,13 @@ namespace Notewll
                     if (recognition != null) recognition.Dispose();
                     string finalText = WritingFormat.Compose(cfg, raw); bool prompt = false;
                     var plan = aiPrompt ? PromptCrafter.PlanForShortcut(finalText, app, window, BrowserAddress.Result(lookup, 1500)) : PromptCrafter.Plan(promptConfig.PromptMode, finalText, app, window, null, BrowserAddress.Result(lookup, 1500));
+                    // First use of the AI prompt shortcut, or the chosen way is not ready: ask before typing anything.
+                    if (aiPrompt && plan != null && plan.Rewrite && (!promptConfig.PromptSetupSeen || AiEngines.NotReady(promptConfig) != null))
+                    {
+                        string problem = promptConfig.PromptSetupSeen ? AiEngines.NotReady(promptConfig) : null;
+                        PostUi(() => { if (!exiting && gen == generation) SetUpPromptsThenFinish(raw, plan, problem); });
+                        return;
+                    }
                     if (plan != null)
                     {
                         finalText = plan.Text; // the wake word is never typed
@@ -539,6 +546,29 @@ namespace Notewll
                 catch (Exception ex) { PostUi(() => { if (gen == generation) Fail(ex.Message); }); }
             });
         }
+
+        // Runs on the UI thread with the dictation held: ask how prompts should be written, then type the request.
+        void SetUpPromptsThenFinish(string raw, PromptPlan plan, string problem)
+        {
+            if (state.Current != AppState.Processing) return;
+            var choice = PromptSetup.Show(config.Theme, problem == null ? null : problem.Replace(" in Preferences > Writing > AI prompts", "").Replace(" in Preferences > Writing", "") + " Choose how prompts should be written:");
+            string text;
+            if (choice == PromptSetup.Choice.NotNow) { text = plan.Text; sessionPrompt = false; } // typed as spoken; ask again next time
+            else
+            {
+                var next = config.Copy(); next.PromptSetupSeen = true;
+                if (choice == PromptSetup.Choice.InChat) next.PromptEngine = "InChat";
+                try { next.Save(); config = next; if (hub != null && !hub.IsDisposed) hub.AdoptPromptChoice(next); } catch (Exception ex) { ReportIssue("AI prompt choice could not be saved: " + ex.Message); }
+                var guide = plan.Guide;
+                if (guide == null) { try { guide = PromptCrafter.BasicGuide(plan.MissingAi, true); } catch { guide = PromptCrafter.BasicGuide(plan.MissingAi, false); } }
+                text = PromptCrafter.InChatRequest(guide, plan.Text); sessionPrompt = true; sessionSpoken = plan.Text; sessionGuide = guide.Name;
+                if (choice == PromptSetup.Choice.OwnKey) BeginInvokeLater(() => { ShowHub("Preferences"); if (hub != null && !hub.IsDisposed) hub.SelectSettingsCategory("Writing"); });
+            }
+            Native.SetForegroundWindow(target); Thread.Sleep(150);
+            var keepEngine = config.PromptEngine; config.PromptEngine = "InChat"; // this request is an in-chat request (no review window)
+            try { Finish(raw, text); } finally { config.PromptEngine = keepEngine; }
+        }
+        void BeginInvokeLater(Action action) { var t = new System.Windows.Forms.Timer { Interval = 600 }; t.Tick += (s, e) => { t.Stop(); t.Dispose(); action(); }; t.Start(); }
 
         void Finish(string raw, string refined)
         {

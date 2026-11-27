@@ -9,8 +9,8 @@ using System.Web.Script.Serialization;
 [assembly: System.Reflection.AssemblyTitle("Notewll")]
 [assembly: System.Reflection.AssemblyProduct("Notewll")]
 #if !STORE_BUILD
-[assembly: System.Reflection.AssemblyVersion("0.13.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("0.13.0.0")]
+[assembly: System.Reflection.AssemblyVersion("0.13.1.0")]
+[assembly: System.Reflection.AssemblyFileVersion("0.13.1.0")]
 #endif
 
 namespace Notewll
@@ -59,6 +59,8 @@ namespace Notewll
         // AI prompts: "Raw" types what was said; "WakeWord" rewrites when a dictation starts with an AI's name;
         // "Automatic" also rewrites when typing into a known AI app or tab. Rewriting needs Sign in with Google.
         public string PromptMode { get; set; }
+        // Set once the person has chosen how AI prompts are written (first press of the AI prompt shortcut).
+        public bool PromptSetupSeen { get; set; }
         // Which AI writes prompts: Notewll (free, Google sign-in) or the person's own key for Gemini, Anthropic, OpenAI or an OpenAI-compatible provider.
         public string PromptEngine { get; set; }
         public string PromptEngineModel { get; set; }
